@@ -453,31 +453,28 @@ export async function getAgentsWithStats(): Promise<ActionResponse<Array<Agent &
 
     const supabase = await createClient();
     
-    const { data: agents, error } = await supabase
+    // Get agents first
+    const { data: agents, error: agentsError } = await supabase
       .from('agents')
-      .select(`
-        *,
-        session_agents(count),
-        agent_responses(count, created_at)
-      `)
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching agents with stats:', error);
+    if (agentsError) {
+      console.error('Error fetching agents:', agentsError);
       return {
         success: false,
         error: 'Failed to fetch agents',
       };
     }
 
-    const agentsWithStats = agents?.map((agent: any) => ({
+    // For now, return agents with zero stats since the relationships don't exist yet
+    // This can be enhanced later when session-agent relationships are implemented
+    const agentsWithStats = agents?.map((agent: Agent) => ({
       ...agent,
-      sessionCount: agent.session_agents?.length || 0,
-      responseCount: agent.agent_responses?.length || 0,
-      lastUsed: agent.agent_responses?.length > 0 
-        ? agent.agent_responses[0].created_at 
-        : null,
+      sessionCount: 0,
+      responseCount: 0,
+      lastUsed: null,
     })) || [];
 
     return {
