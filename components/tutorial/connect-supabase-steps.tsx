@@ -1,62 +1,59 @@
-import { TutorialStep } from "./tutorial-step";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLink } from "lucide-react";
 
 export function ConnectSupabaseSteps() {
   return (
-    <ol className="flex flex-col gap-6">
-      <TutorialStep title="Create Supabase project">
-        <p>
-          Head over to{" "}
+    <Card>
+      <CardHeader>
+        <CardTitle>Connect to Supabase</CardTitle>
+        <CardDescription>
+          Follow these steps to set up your Supabase project and connect it to your application.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Badge variant="outline">Step 1</Badge>
+          <p className="text-sm text-muted-foreground">
+            Create a new Supabase project at{" "}
+            <a
+              href="https://supabase.com/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline inline-flex items-center gap-1"
+            >
+              supabase.com/dashboard
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <Badge variant="outline">Step 2</Badge>
+          <p className="text-sm text-muted-foreground">
+            Copy your project URL and anon key from Settings → API
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <Badge variant="outline">Step 3</Badge>
+          <p className="text-sm text-muted-foreground">
+            Update the environment variables in your .env.local file
+          </p>
+        </div>
+        
+        <Button asChild className="w-full">
           <a
-            href="https://app.supabase.com/project/_/settings/api"
+            href="https://supabase.com/dashboard"
             target="_blank"
-            className="font-bold hover:underline text-foreground/80"
-            rel="noreferrer"
+            rel="noopener noreferrer"
           >
-            database.new
-          </a>{" "}
-          and create a new Supabase project.
-        </p>
-      </TutorialStep>
-
-      <TutorialStep title="Declare environment variables">
-        <p>
-          Rename the{" "}
-          <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-            .env.example
-          </span>{" "}
-          file in your Next.js app to{" "}
-          <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-            .env.local
-          </span>{" "}
-          and populate with values from{" "}
-          <a
-            href="https://app.supabase.com/project/_/settings/api"
-            target="_blank"
-            className="font-bold hover:underline text-foreground/80"
-            rel="noreferrer"
-          >
-            your Supabase project&apos;s API Settings
+            Get Started with Supabase
+            <ExternalLink className="ml-2 h-4 w-4" />
           </a>
-          .
-        </p>
-      </TutorialStep>
-
-      <TutorialStep title="Restart your Next.js development server">
-        <p>
-          You may need to quit your Next.js development server and run{" "}
-          <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-            npm run dev
-          </span>{" "}
-          again to load the new environment variables.
-        </p>
-      </TutorialStep>
-
-      <TutorialStep title="Refresh the page">
-        <p>
-          You may need to refresh the page for Next.js to load the new
-          environment variables.
-        </p>
-      </TutorialStep>
-    </ol>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

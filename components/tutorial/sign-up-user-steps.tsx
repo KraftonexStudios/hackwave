@@ -1,91 +1,78 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserPlus, Database, Zap } from "lucide-react";
 import Link from "next/link";
-import { TutorialStep } from "./tutorial-step";
-import { ArrowUpRight } from "lucide-react";
 
 export function SignUpUserSteps() {
   return (
-    <ol className="flex flex-col gap-6">
-      {process.env.VERCEL_ENV === "preview" ||
-      process.env.VERCEL_ENV === "production" ? (
-        <TutorialStep title="Set up redirect urls">
-          <p>It looks like this App is hosted on Vercel.</p>
-          <p className="mt-4">
-            This particular deployment is
-            <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-              &quot;{process.env.VERCEL_ENV}&quot;
-            </span>{" "}
-            on
-            <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-              https://{process.env.VERCEL_URL}
-            </span>
-            .
-          </p>
-          <p className="mt-4">
-            You will need to{" "}
-            <Link
-              className="text-primary hover:text-foreground"
-              href={
-                "https://supabase.com/dashboard/project/_/auth/url-configuration"
-              }
-            >
-              update your Supabase project
-            </Link>{" "}
-            with redirect URLs based on your Vercel deployment URLs.
-          </p>
-          <ul className="mt-4">
-            <li>
-              -{" "}
-              <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-                http://localhost:3000/**
-              </span>
-            </li>
-            <li>
-              -{" "}
-              <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-                {`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/**`}
-              </span>
-            </li>
-            <li>
-              -{" "}
-              <span className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-xs font-medium text-secondary-foreground border">
-                {`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(
-                  ".vercel.app",
-                  "",
-                )}-*-[vercel-team-url].vercel.app/**`}
-              </span>{" "}
-              (Vercel Team URL can be found in{" "}
-              <Link
-                className="text-primary hover:text-foreground"
-                href="https://vercel.com/docs/accounts/create-a-team#find-your-team-id"
-                target="_blank"
-              >
-                Vercel Team settings
-              </Link>
-              )
-            </li>
-          </ul>
-          <Link
-            href="https://supabase.com/docs/guides/auth/redirect-urls#vercel-preview-urls"
-            target="_blank"
-            className="text-primary/50 hover:text-primary flex items-center text-sm gap-1 mt-4"
-          >
-            Redirect URLs Docs <ArrowUpRight size={14} />
-          </Link>
-        </TutorialStep>
-      ) : null}
-      <TutorialStep title="Sign up your first user">
-        <p>
-          Head over to the{" "}
-          <Link
-            href="auth/sign-up"
-            className="font-bold hover:underline text-foreground/80"
-          >
-            Sign up
-          </Link>{" "}
-          page and sign up your first user. It&apos;s okay if this is just you
-          for now. Your awesome idea will have plenty of users later!
-        </p>
-      </TutorialStep>
-    </ol>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Get Started
+          </CardTitle>
+          <CardDescription>
+            Your Supabase project is connected! Follow these steps to start using the application.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Badge variant="outline">Step 1</Badge>
+            <p className="text-sm text-muted-foreground">
+              Sign up for an account to access the dashboard
+            </p>
+            <Button asChild size="sm">
+              <Link href="/auth/sign-up">Create Account</Link>
+            </Button>
+          </div>
+          
+          <div className="space-y-2">
+            <Badge variant="outline">Step 2</Badge>
+            <p className="text-sm text-muted-foreground">
+              Create AI agents and start debates
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Badge variant="outline">Step 3</Badge>
+            <p className="text-sm text-muted-foreground">
+              Visualize agent interactions and generate reports
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Database className="h-4 w-4" />
+              Database Ready
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Your Supabase database is configured and ready to store agents, sessions, and debate data.
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Zap className="h-4 w-4" />
+              AI Powered
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Integrated with OpenAI and Anthropic for intelligent agent conversations and debates.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }
