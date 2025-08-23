@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getDebateSession, getSessionRounds } from '@/actions/debates';
-import { getAgentsByIds } from '@/actions/agents';
+import { getFlow, getFlowRounds } from '@/actions/flows';
 import { AgentFlowVisualization } from '@/components/debate/agent-flow-visualization';
+import { Round } from '@/database.types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft } from 'lucide-react';
@@ -31,8 +31,8 @@ function VisualizationSkeleton() {
 
 async function VisualizationContent({ sessionId }: { sessionId: string }) {
   const [sessionResult, roundsResult] = await Promise.all([
-    getDebateSession(sessionId),
-    getSessionRounds(sessionId),
+    getFlow(sessionId),
+    getFlowRounds(sessionId),
   ]);
 
   if (!sessionResult.success || !sessionResult.data) {
@@ -42,10 +42,9 @@ async function VisualizationContent({ sessionId }: { sessionId: string }) {
   const session = sessionResult.data;
   const rounds = roundsResult.success ? roundsResult.data || [] : [];
 
-  // Get session agents
-  const agentIds = session.session_agents?.map((sa) => sa.agent_id) || [];
-  const agentsResult = await getAgentsByIds(agentIds);
-  const agents = agentsResult.success ? agentsResult.data || [] : [];
+  // For now, we'll need to get agents differently since flow sessions don't have session_agents
+  // This will be updated when we implement proper agent assignment for flows
+  const agents: any[] = [];
 
   return (
     <div className="space-y-6">
@@ -58,10 +57,10 @@ async function VisualizationContent({ sessionId }: { sessionId: string }) {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">
-              Agent Interaction Visualization
+              Flow Visualization
             </h1>
             <p className="text-muted-foreground">
-              Visual representation of agent interactions and debate flow
+              Visual representation of AI agent flow processing
             </p>
           </div>
         </div>
@@ -69,10 +68,10 @@ async function VisualizationContent({ sessionId }: { sessionId: string }) {
           <Button variant="outline" asChild>
             <Link href={`/dashboard/sessions/${session.id}`}>Back to Session</Link>
           </Button>
-          {session.status === 'active' && (
+          {session.status === 'ACTIVE' && (
             <Button asChild>
               <Link href={`/dashboard/sessions/${session.id}/debate`}>
-                Continue Debate
+                Process Flow
               </Link>
             </Button>
           )}
@@ -93,30 +92,30 @@ async function VisualizationContent({ sessionId }: { sessionId: string }) {
           </h3>
           <div className="space-y-1 text-sm text-blue-700 dark:text-blue-300">
             <div>Status: <span className="font-medium">{session.status}</span></div>
-            <div>Round: <span className="font-medium">{session.current_round || 0}/{session.max_rounds}</span></div>
+            <div>Rounds: <span className="font-medium">{rounds.length}</span></div>
             <div>Agents: <span className="font-medium">{agents.length}</span></div>
           </div>
         </div>
-        
+
         <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
           <h3 className="font-medium text-green-900 dark:text-green-100 mb-2">
             Agent Activity
           </h3>
           <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
-            <div>Active: <span className="font-medium">{agents.filter(a => session.session_agents?.find(sa => sa.agent_id === a.id)?.is_active).length}</span></div>
-            <div>Total Responses: <span className="font-medium">{rounds.reduce((sum, round) => sum + (round.agent_responses?.length || 0), 0)}</span></div>
-            <div>Completed: <span className="font-medium">{rounds.reduce((sum, round) => sum + (round.agent_responses?.filter(r => r.status === 'completed').length || 0), 0)}</span></div>
+            <div>Active: <span className="font-medium">{agents.length}</span></div>
+            <div>Total Rounds: <span className="font-medium">{rounds.length}</span></div>
+            <div>Completed: <span className="font-medium">{rounds.filter((r: Round) => r.status === 'COMPLETED').length}</span></div>
           </div>
         </div>
-        
+
         <div className="bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <h3 className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">
             Round Progress
           </h3>
           <div className="space-y-1 text-sm text-yellow-700 dark:text-yellow-300">
-            <div>Completed: <span className="font-medium">{rounds.filter(r => r.status === 'completed').length}</span></div>
-            <div>In Progress: <span className="font-medium">{rounds.filter(r => r.status === 'in_progress').length}</span></div>
-            <div>Pending: <span className="font-medium">{rounds.filter(r => r.status === 'pending').length}</span></div>
+            <div>Completed: <span className="font-medium">{rounds.filter((r: Round) => r.status === 'COMPLETED').length}</span></div>
+            <div>Processing: <span className="font-medium">{rounds.filter((r: Round) => r.status === 'IN_PROGRESS').length}</span></div>
+            <div>Pending: <span className="font-medium">{rounds.filter((r: Round) => r.status === 'PENDING').length}</span></div>
           </div>
         </div>
       </div>

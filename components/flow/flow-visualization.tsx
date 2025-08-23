@@ -3,8 +3,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   ReactFlow,
-  MiniMap,
-  Controls,
   Background,
   useNodesState,
   useEdgesState,
@@ -17,13 +15,25 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Send, Bot, Users, MessageSquare, Zap } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Send, Users, Settings } from 'lucide-react';
+import { getActiveAgents } from '@/actions/agents';
+import type { Agent } from '@/database.types';
+import { useToast } from '@/hooks/use-toast';
 import { AgentNode } from './nodes/agent-node';
 import { DebateNode } from './nodes/debate-node';
 import { QuestionNode } from './nodes/question-node';
 import { ResponseNode } from './nodes/response-node';
-import { ValidationTable } from './validation-table';
+import { createClient } from '@/lib/supabase/client';
+
+interface FlowVisualizationProps {
+  agents?: Agent[];
+  sessionId?: string;
+}
 
 const nodeTypes = {
   agent: AgentNode,
@@ -47,7 +57,7 @@ const initialNodes: Node[] = [
 
 const initialEdges: Edge[] = [];
 
-export function FlowVisualization() {
+export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationProps = {}) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [inputValue, setInputValue] = useState('');
@@ -59,7 +69,12 @@ export function FlowVisualization() {
   const [showValidationTable, setShowValidationTable] = useState(false);
   const [currentRound, setCurrentRound] = useState(1);
   const [maxRounds] = useState(5);
+  const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>(agents.map(agent => agent.id));
+  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
+  const [showAgentPanel, setShowAgentPanel] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -67,6 +82,45 @@ export function FlowVisualization() {
   );
 
   const generateNodeId = () => `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Load agents function
+  const loadAgents = useCallback(async () => {
+    setIsLoadingAgents(true);
+    try {
+      const result = await getActiveAgents();
+      if (result.success) {
+        setAvailableAgents(result.data || []);
+      } else {
+        toast({
+          title: 'Error loading agents',
+          description: result.error,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load agents',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingAgents(false);
+    }
+  }, [toast]);
+
+  // Load agents on component mount
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
+
+  // Toggle agent selection
+  const toggleAgent = useCallback((agentId: string) => {
+    setSelectedAgents(prev =>
+      prev.includes(agentId)
+        ? prev.filter(id => id !== agentId)
+        : [...prev, agentId]
+    );
+  }, []);
 
   const generateAgentNode = (id: string, position: { x: number; y: number }, name: string, role: 'advocate' | 'opponent' | 'moderator', topic?: string) => ({
     id,
@@ -86,11 +140,11 @@ export function FlowVisualization() {
     id,
     type: 'question',
     position,
-    data: { 
-      question, 
-      status: assignedTo ? 'assigned' : 'pending', 
+    data: {
+      question,
+      status: assignedTo ? 'assigned' : 'pending',
       priority: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
-      assignedTo 
+      assignedTo
     },
   });
 
@@ -98,10 +152,10 @@ export function FlowVisualization() {
     id,
     type: 'response',
     position,
-    data: { 
-      agent, 
-      response, 
-      sentiment, 
+    data: {
+      agent,
+      response,
+      sentiment,
       timestamp: new Date().toLocaleTimeString(),
       confidence: Math.floor(Math.random() * 30) + 70,
       wordCount: response.split(' ').length
@@ -109,24 +163,36 @@ export function FlowVisualization() {
   });
 
   const createAgentNodes = (topic: string, nodeId: string) => {
-    const agents = [
-      { name: 'Pro Agent', role: 'advocate', color: '#10b981' },
-      { name: 'Con Agent', role: 'opponent', color: '#ef4444' },
-      { name: 'Moderator', role: 'moderator', color: '#6366f1' },
-    ];
+    if (selectedAgents.length === 0) {
+      toast({
+        title: 'No agents selected',
+        description: 'Please select at least one agent to start the flow.',
+        variant: 'destructive',
+      });
+      return [];
+    }
 
-    return agents.map((agent, index) => ({
-      id: `${nodeId}_agent_${index}`,
-      type: 'agent',
-      position: { x: 200 + index * 300, y: 200 },
-      data: {
-        name: agent.name,
-        role: agent.role,
-        color: agent.color,
-        status: 'active',
-        topic: topic,
-      },
-    }));
+    const selectedAgentData = agents.filter(agent => selectedAgents.includes(agent.id));
+    const roles: ('advocate' | 'opponent' | 'moderator')[] = ['advocate', 'opponent', 'moderator'];
+
+    return selectedAgentData.map((agent, index) => {
+      const role = roles[index % roles.length];
+      const colors = ['#10b981', '#ef4444', '#6366f1'];
+      const color = colors[index % colors.length];
+
+      return {
+        id: `${nodeId}_agent_${index}`,
+        type: 'agent',
+        position: { x: 200 + index * 300, y: 200 },
+        data: {
+          name: agent.name,
+          role: role,
+          color: color,
+          status: 'active',
+          topic: topic,
+        },
+      };
+    });
   };
 
   const createDebateNode = (topic: string, nodeId: string) => ({
@@ -241,27 +307,41 @@ export function FlowVisualization() {
     setDebateHistory(prev => [...prev, topic]);
 
     try {
-      // Call the API to process the query
+      // Get authenticated Supabase client
+      const supabase = createClient();
+      
+      // Get the session to include auth headers
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Authentication required. Please log in.');
+      }
+
+      // Call the API to process the query with authentication
       const response = await fetch('/api/flow/process', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          query: topic
+          query: topic,
+          selectedAgents,
+          sessionId
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to process query');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to process query');
       }
 
       const data = await response.json();
-      
+
       // Create flow visualization based on API response
       const newNodes: Node[] = [];
       const newEdges: Edge[] = [];
-      
+
       // Start node
       const startNode = {
         id: 'start',
@@ -274,7 +354,7 @@ export function FlowVisualization() {
         }
       };
       newNodes.push(startNode);
-      
+
       // Task distributor node
       const distributorNode = {
         id: 'distributor',
@@ -288,7 +368,7 @@ export function FlowVisualization() {
         }
       };
       newNodes.push(distributorNode);
-      
+
       // Connect start to distributor
       newEdges.push({
         id: 'start-distributor',
@@ -296,7 +376,7 @@ export function FlowVisualization() {
         target: 'distributor',
         animated: true
       });
-      
+
       // Agent nodes for parallel processing
       if (data.agents) {
         data.agents.forEach((agent: any, index: number) => {
@@ -312,7 +392,7 @@ export function FlowVisualization() {
             }
           };
           newNodes.push(agentNode);
-          
+
           // Connect distributor to agents
           newEdges.push({
             id: `distributor-agent-${agent.id}`,
@@ -322,7 +402,7 @@ export function FlowVisualization() {
           });
         });
       }
-      
+
       // Agent response nodes
       if (data.agentResponses) {
         data.agentResponses.forEach((response: any, index: number) => {
@@ -340,7 +420,7 @@ export function FlowVisualization() {
             }
           };
           newNodes.push(responseNode);
-          
+
           // Connect agent to response
           newEdges.push({
             id: `agent-response-${response.agentId}`,
@@ -350,7 +430,7 @@ export function FlowVisualization() {
           });
         });
       }
-      
+
       // Validator node
       const validatorNode = {
         id: 'validator',
@@ -364,7 +444,7 @@ export function FlowVisualization() {
         }
       };
       newNodes.push(validatorNode);
-      
+
       // Connect all responses to validator
       if (data.agentResponses) {
         data.agentResponses.forEach((response: any) => {
@@ -376,32 +456,32 @@ export function FlowVisualization() {
           });
         });
       }
-      
+
       // Store validation results and show validation table
       setValidationResults(data.validationResults || []);
       setProcessingData(data);
       setShowValidationTable(true);
-      
+
       setNodes(newNodes);
       setEdges(newEdges);
-      
+
     } catch (error) {
       console.error('Error processing query:', error);
       // Fallback to original behavior on API error
       const nodeId = generateNodeId();
       const isQuestion = topic.includes('?') || topic.toLowerCase().startsWith('what') || topic.toLowerCase().startsWith('how') || topic.toLowerCase().startsWith('why');
       const isDebateTopic = topic.toLowerCase().includes('vs') || topic.toLowerCase().includes('versus') || topic.toLowerCase().includes('debate');
-      
+
       let newNodes: Node[] = [];
       let newEdges: Edge[] = [];
-      
+
       if (isQuestion) {
         const questionNode = generateQuestionNode(
           `question_${nodeId}`,
           { x: Math.random() * 400 + 200, y: Math.random() * 200 + 100 },
           topic
         );
-        
+
         const advocateAgent = generateAgentNode(
           `agent_adv_${nodeId}`,
           { x: questionNode.position.x - 200, y: questionNode.position.y + 150 },
@@ -409,7 +489,7 @@ export function FlowVisualization() {
           'advocate',
           topic
         );
-        
+
         const opponentAgent = generateAgentNode(
           `agent_opp_${nodeId}`,
           { x: questionNode.position.x + 200, y: questionNode.position.y + 150 },
@@ -417,7 +497,7 @@ export function FlowVisualization() {
           'opponent',
           topic
         );
-        
+
         newNodes = [questionNode, advocateAgent, opponentAgent];
         newEdges = [
           {
@@ -440,7 +520,7 @@ export function FlowVisualization() {
         const debateNode = createDebateNode(topic, nodeId);
         const questionNodes = createQuestionNodes(topic, nodeId);
         const responseNodes = createResponseNodes(topic, nodeId);
-        
+
         newNodes = [...agentNodes, debateNode, ...questionNodes, ...responseNodes];
         newEdges = createEdges(nodeId, agentNodes.length, questionNodes.length);
       }
@@ -455,7 +535,7 @@ export function FlowVisualization() {
     // Clear input
     setInputValue('');
     setIsProcessing(false);
-  }, [inputValue, isProcessing, setNodes, setEdges]);
+  }, [inputValue, isProcessing, selectedAgents, agents, availableAgents, toast]);
 
   const clearFlow = () => {
     setNodes(initialNodes);
@@ -468,10 +548,10 @@ export function FlowVisualization() {
     setNodes((nds) => {
       const layoutedNodes = nds.map((node, index) => {
         if (node.id === 'start') return node;
-        
+
         const row = Math.floor(index / 3);
         const col = index % 3;
-        
+
         return {
           ...node,
           position: {
@@ -488,42 +568,42 @@ export function FlowVisualization() {
   useEffect(() => {
     if (inputValue.length > 0 && inputValue.length % 10 === 0) {
       // Update start node to show typing progress
-      setNodes((nds) => 
-        nds.map((node) => 
-          node.id === 'start' 
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === 'start'
             ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  question: `Processing: "${inputValue}"...`,
-                  status: 'assigned'
-                }
+              ...node,
+              data: {
+                ...node.data,
+                question: `Processing: "${inputValue}"...`,
+                status: 'assigned'
               }
+            }
             : node
         )
       );
     } else if (inputValue.length === 0) {
       // Reset start node
-      setNodes((nds) => 
-        nds.map((node) => 
-          node.id === 'start' 
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === 'start'
             ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  question: 'Enter your topic to begin the debate visualization',
-                  status: 'waiting'
-                }
+              ...node,
+              data: {
+                ...node.data,
+                question: 'Enter your topic to begin the debate visualization',
+                status: 'waiting'
               }
+            }
             : node
         )
       );
     }
-  }, [inputValue, setNodes]);
+  }, [inputValue]); // Removed setNodes dependency to prevent infinite loop
 
   const handleValidationSelectionChange = (selectedIds: string[]) => {
     // Update validation results with selection
-    setValidationResults(prev => 
+    setValidationResults(prev =>
       prev.map(result => ({
         ...result,
         selected: selectedIds.includes(result.id)
@@ -532,17 +612,28 @@ export function FlowVisualization() {
   };
 
   const handleValidationFeedback = async (
-    feedback: string, 
-    selectedIds: string[], 
+    feedback: string,
+    selectedIds: string[],
     action: 'next_round' | 'generate_report'
   ) => {
     if (!currentSessionId) return;
 
     try {
+      // Get authenticated Supabase client
+      const supabase = createClient();
+      
+      // Get the session to include auth headers
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Authentication required. Please log in.');
+      }
+
       const response = await fetch('/api/flow/iterate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           sessionId: currentSessionId,
@@ -592,144 +683,139 @@ export function FlowVisualization() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-background"
+          className="bg-gray-50"
         >
-          <Controls />
-          <MiniMap />
-          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
         </ReactFlow>
 
-        {/* Clear Button */}
-        {debateHistory.length > 0 && (
-          <Button
-            onClick={clearFlow}
-            variant="outline"
-            size="sm"
-            className="absolute top-4 right-4 z-10"
-          >
-            Clear Flow
-          </Button>
+        {/* No Agents Connected Indicator */}
+        {selectedAgents.length === 0 && (
+          <div className="absolute top-4 right-4 z-10">
+            <Card className="bg-yellow-50 border-yellow-200">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-yellow-800">
+                  <Users className="h-4 w-4" />
+                  <span className="text-sm font-medium">No agents connected to this flow</span>
+                </div>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Click the agents button below to select agents for your flow
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
 
-      {/* Chat Input Area */}
-      <Card className="m-4 mt-0">
-        <CardContent className="p-4">
-          <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
-            <div className="flex-1 relative">
-              <Input
-                ref={inputRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Enter debate topic, question, or argument..."
-                disabled={isProcessing}
-                className="pr-12"
-              />
-              {isProcessing && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+      {/* Input Area */}
+      <div className="absolute bottom-4 left-4 right-4 z-10">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="shrink-0">
+                <Users className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80">
+              <SheetHeader>
+                <SheetTitle>Select Agents</SheetTitle>
+                <SheetDescription>
+                  Choose agents to participate in the debate flow.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6">
+                <div className="mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Selected: {selectedAgents.length}</span>
+                    {selectedAgents.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedAgents([])}
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedAgents.map(agentId => {
+                      const agent = agents.find(a => a.id === agentId) || availableAgents.find(a => a.id === agentId);
+                      return agent ? (
+                        <Badge key={agentId} variant="secondary" className="text-xs">
+                          {agent.name}
+                        </Badge>
+                      ) : null;
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
-            <Button type="submit" disabled={!inputValue.trim() || isProcessing}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-          
-          {/* Action Buttons */}
-          <div className="flex gap-2 mb-3">
-            <Button type="button" variant="outline" size="sm" onClick={autoLayout}>
-              <Zap className="h-3 w-3 mr-1" />
-              Auto Layout
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={clearFlow}>
-              Clear Flow
-            </Button>
-            <div className="flex-1" />
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Pro</span>
+                <ScrollArea className="h-96">
+                  <div className="space-y-2">
+                    {isLoadingAgents ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        Loading agents...
+                      </div>
+                    ) : availableAgents.length === 0 ? (
+                      <div className="text-center py-4 text-sm text-muted-foreground">
+                        No agents available
+                      </div>
+                    ) : (
+                      availableAgents.map(agent => (
+                        <Card key={agent.id} className="p-3">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id={agent.id}
+                              checked={selectedAgents.includes(agent.id)}
+                              onCheckedChange={() => toggleAgent(agent.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <label
+                                htmlFor={agent.id}
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                {agent.name}
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {agent.description}
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`text-xs px-2 py-1 rounded-full ${agent.is_active
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                  {agent.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <span>Con</span>
+            </SheetContent>
+          </Sheet>
+          <div className="flex-1 relative">
+            <Input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Enter debate topic, question, or argument..."
+              disabled={isProcessing}
+              className="pr-12 bg-white/90 backdrop-blur-sm border-2"
+            />
+            {isProcessing && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Question</span>
-              </div>
-            </div>
+            )}
           </div>
-          
-          {/* Debate History */}
-          {debateHistory.length > 0 && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Recent topics:</p>
-              <div className="flex flex-wrap gap-1">
-                {debateHistory.slice(-3).map((topic, index) => (
-                  <span
-                    key={index}
-                    className="text-xs bg-muted px-2 py-1 rounded cursor-pointer hover:bg-muted/80 transition-colors"
-                    onClick={() => setInputValue(topic)}
-                  >
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Quick Examples */}
-          {debateHistory.length === 0 && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Try these examples:</p>
-              <div className="flex flex-wrap gap-1">
-                {[
-                  'Should AI replace human teachers?',
-                  'Climate change vs Economic growth',
-                  'What are the benefits of remote work?'
-                ].map((example, index) => (
-                  <span
-                    key={index}
-                    className="text-xs bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-1 rounded cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-                    onClick={() => setInputValue(example)}
-                  >
-                    {example}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Validation Table Modal/Overlay */}
-      {showValidationTable && validationResults.length > 0 && currentSessionId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Validation Results</h2>
-              <button
-                onClick={() => setShowValidationTable(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4">
-              <ValidationTable
-                validationResults={validationResults}
-                onSelectionChange={handleValidationSelectionChange}
-                onSubmitFeedback={handleValidationFeedback}
-                sessionId={currentSessionId}
-                currentRound={currentRound}
-                maxRounds={maxRounds}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+          <Button type="submit" disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+
+
     </div>
   );
 }

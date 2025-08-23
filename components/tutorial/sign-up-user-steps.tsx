@@ -27,14 +27,14 @@ export function SignUpUserSteps() {
               <Link href="/auth/sign-up">Create Account</Link>
             </Button>
           </div>
-          
+
           <div className="space-y-2">
             <Badge variant="outline">Step 2</Badge>
             <p className="text-sm text-muted-foreground">
               Create AI agents and start debates
             </p>
           </div>
-          
+
           <div className="space-y-2">
             <Badge variant="outline">Step 3</Badge>
             <p className="text-sm text-muted-foreground">
@@ -43,7 +43,7 @@ export function SignUpUserSteps() {
           </div>
         </CardContent>
       </Card>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -58,7 +58,7 @@ export function SignUpUserSteps() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">

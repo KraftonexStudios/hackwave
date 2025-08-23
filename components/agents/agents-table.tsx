@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Agent } from '@/database.types';
+import type { Agent } from '@/database.types';
 import { deleteAgent, toggleAgentStatus, duplicateAgent } from '@/actions/agents';
 import { Button } from '@/components/ui/button';
 import {
@@ -206,7 +206,6 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                       <Switch
                         checked={agent.is_active}
                         onCheckedChange={() => handleToggleStatus(agent)}
-                        size="sm"
                       />
                       <Badge
                         variant={agent.is_active ? 'default' : 'secondary'}
@@ -225,8 +224,8 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                     <div className="text-sm text-muted-foreground">
                       {agent.lastUsed
                         ? formatDistanceToNow(new Date(agent.lastUsed), {
-                            addSuffix: true,
-                          })
+                          addSuffix: true,
+                        })
                         : 'Never'}
                     </div>
                   </TableCell>
@@ -241,15 +240,19 @@ export function AgentsTable({ agents }: AgentsTableProps) {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <ViewAgentDialog agent={agent}>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            View Details
+                          <DropdownMenuItem asChild>
+                            <div className="flex items-center cursor-pointer">
+                              <Edit className="mr-2 h-4 w-4" />
+                              View Details
+                            </div>
                           </DropdownMenuItem>
                         </ViewAgentDialog>
                         <EditAgentDialog agent={agent}>
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                          <DropdownMenuItem asChild>
+                            <div className="flex items-center cursor-pointer">
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </div>
                           </DropdownMenuItem>
                         </EditAgentDialog>
                         <DropdownMenuItem
@@ -284,7 +287,7 @@ export function AgentsTable({ agents }: AgentsTableProps) {
             <AlertDialogDescription>
               This will permanently delete the agent "{agentToDelete?.name}". This
               action cannot be undone.
-              {agentToDelete?.sessionCount > 0 && (
+              {agentToDelete && agentToDelete.sessionCount > 0 && (
                 <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">
                     ⚠️ This agent has been used in {agentToDelete.sessionCount} debate session(s).

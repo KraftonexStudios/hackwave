@@ -14,9 +14,9 @@ import {
   Background,
   BackgroundVariant,
   Panel,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { DebateSession, Agent, DebateRound, AgentResponse } from '@/database.types';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import type { Session, Agent, Round, Responce as AgentResponse } from '@/database.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,9 +46,9 @@ const nodeTypes = {
 };
 
 interface AgentFlowVisualizationProps {
-  session: DebateSession;
+  session: Session;
   agents: Agent[];
-  rounds: (DebateRound & {
+  rounds: (Round & {
     agent_responses?: AgentResponse[];
   })[];
 }
@@ -61,12 +61,12 @@ interface AgentNodeData {
 }
 
 interface SessionNodeData {
-  session: DebateSession;
+  session: Session;
   progress: number;
 }
 
 interface RoundNodeData {
-  round: DebateRound;
+  round: Round;
   responseCount: number;
 }
 
@@ -93,9 +93,8 @@ function AgentNode({ data }: { data: AgentNodeData }) {
           <h3 className="font-medium text-sm truncate">{data.agent.name}</h3>
           <div className="flex items-center gap-1">
             <div
-              className={`w-2 h-2 rounded-full ${
-                data.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-              }`}
+              className={`w-2 h-2 rounded-full ${data.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
+                }`}
             />
             <span className="text-xs text-muted-foreground">
               {data.status}
@@ -186,37 +185,37 @@ export function AgentFlowVisualization({
   agents,
   rounds,
 }: AgentFlowVisualizationProps) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([] as Edge[]);
   const [layoutType, setLayoutType] = useState<'hierarchical' | 'circular' | 'force'>('hierarchical');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Calculate agent statistics
   const agentStats = useMemo(() => {
     const stats = new Map();
-    
+
     agents.forEach((agent) => {
-      const responses = rounds.flatMap(round => 
+      const responses = rounds.flatMap(round =>
         (round.agent_responses || []).filter(response => response.agent_id === agent.id)
       );
-      
-      const completedResponses = responses.filter(r => r.status === 'completed');
+
+      const completedResponses = responses.filter(r => r.status === 'ACCEPTED' || r.status === 'VALIDATED');
       const avgProcessingTime = completedResponses.length > 0
         ? Math.round(
-            completedResponses.reduce((sum, r) => sum + (r.processing_time_ms || 0), 0) /
-            completedResponses.length
-          )
+          completedResponses.reduce((sum, r) => sum + (r.processing_time || 0), 0) /
+          completedResponses.length
+        )
         : 0;
-      
-      const sessionAgent = session.session_agents?.find(sa => sa.agent_id === agent.id);
-      
+
+      // Note: session_agents relationship is handled separately in the database
+      // For now, we'll default to 'active' status since we don't have session_agents data
       stats.set(agent.id, {
         responseCount: responses.length,
         avgProcessingTime,
-        status: sessionAgent?.is_active ? 'active' : 'inactive',
+        status: 'active', // Default to active since we don't have session_agents data
       });
     });
-    
+
     return stats;
   }, [agents, rounds, session]);
 
@@ -226,8 +225,8 @@ export function AgentFlowVisualization({
     const newEdges: Edge[] = [];
 
     // Session node (center)
-    const sessionProgress = session.max_rounds > 0 
-      ? ((session.current_round || 0) / session.max_rounds) * 100 
+    const sessionProgress = session.max_rounds > 0
+      ? ((session.current_round || 0) / session.max_rounds) * 100
       : 0;
 
     newNodes.push({
@@ -243,7 +242,7 @@ export function AgentFlowVisualization({
     // Agent nodes
     const agentRadius = 250;
     const agentAngleStep = (2 * Math.PI) / agents.length;
-    
+
     agents.forEach((agent, index) => {
       const stats = agentStats.get(agent.id) || {
         responseCount: 0,
@@ -298,7 +297,7 @@ export function AgentFlowVisualization({
     // Round nodes
     rounds.forEach((round, index) => {
       const responseCount = round.agent_responses?.length || 0;
-      
+
       newNodes.push({
         id: `round-${round.id}`,
         type: 'round',
@@ -318,10 +317,10 @@ export function AgentFlowVisualization({
         source: 'session',
         target: `round-${round.id}`,
         type: 'smoothstep',
-        animated: round.status === 'in_progress',
+        animated: round.status === 'IN_PROGRESS',
         style: {
-          stroke: round.status === 'completed' ? '#10b981' : 
-                  round.status === 'in_progress' ? '#f59e0b' : '#6b7280',
+          stroke: round.status === 'COMPLETED' ? '#10b981' :
+            round.status === 'IN_PROGRESS' ? '#f59e0b' : '#6b7280',
           strokeWidth: 2,
         },
       });
@@ -333,13 +332,14 @@ export function AgentFlowVisualization({
           source: `agent-${response.agent_id}`,
           target: `round-${round.id}`,
           type: 'smoothstep',
-          animated: response.status === 'processing',
+          animated: response.status === 'SUBMITTED',
           style: {
-            stroke: response.status === 'completed' ? '#10b981' : 
-                    response.status === 'processing' ? '#3b82f6' : 
-                    response.status === 'failed' ? '#ef4444' : '#6b7280',
+            stroke: response.status === 'ACCEPTED' ? '#10b981' :
+              response.status === 'VALIDATED' ? '#10b981' :
+                response.status === 'SUBMITTED' ? '#3b82f6' :
+                  response.status === 'REJECTED' ? '#ef4444' : '#6b7280',
             strokeWidth: 1,
-            strokeDasharray: response.status === 'pending' ? '5,5' : undefined,
+            strokeDasharray: response.status === 'SUBMITTED' ? '5,5' : undefined,
           },
         });
       });
@@ -347,7 +347,7 @@ export function AgentFlowVisualization({
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [agents, rounds, session, agentStats, layoutType, setNodes, setEdges]);
+  }, [agents, rounds, session, agentStats, layoutType]); // Removed setNodes and setEdges to prevent infinite loop
 
   // Generate layout on mount and when dependencies change
   useEffect(() => {

@@ -1,21 +1,22 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getDebateSession, getSessionRounds } from '@/actions/debates';
-import { getAgentsByIds } from '@/actions/agents';
-import { DebateInterface } from '@/components/debate/debate-interface';
+import { getFlow, getFlowRounds } from '@/actions/flows';
+import { getSessionAgents } from '@/actions/session-agents';
+import { FlowVisualization } from '@/components/flow/flow-visualization';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface DebatePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-function DebateInterfaceSkeleton() {
+function FlowVisualizationSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -40,9 +41,10 @@ function DebateInterfaceSkeleton() {
 }
 
 async function DebateContent({ sessionId }: { sessionId: string }) {
-  const [sessionResult, roundsResult] = await Promise.all([
-    getDebateSession(sessionId),
-    getSessionRounds(sessionId),
+  const [sessionResult, roundsResult, agentsResult] = await Promise.all([
+    getFlow(sessionId),
+    getFlowRounds(sessionId),
+    getSessionAgents(sessionId),
   ]);
 
   if (!sessionResult.success || !sessionResult.data) {
@@ -51,9 +53,38 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
 
   const session = sessionResult.data;
   const rounds = roundsResult.success ? roundsResult.data || [] : [];
+  
+  // Type the session agents result properly
+  type SessionAgentWithAgent = {
+    id: string;
+    agent_id: string;
+    role: "PARTICIPANT" | "VALIDATOR" | "MODERATOR" | "TASK_DISTRIBUTOR" | "REPORT_GENERATOR";
+    is_active: boolean;
+    joined_at: string;
+    session_id: string;
+    agents: {
+      id: string;
+      name: string;
+      description: string | null;
+    } | null;
+  };
+
+  const sessionAgents = agentsResult.success ? (agentsResult.data as SessionAgentWithAgent[] || []) : [];
+  
+  // Extract agent data from sessionAgents
+  const agents = sessionAgents.filter(sa => sa.agents).map(sa => ({
+    id: sa.agents!.id,
+    name: sa.agents!.name,
+    description: sa.agents!.description,
+    created_at: new Date().toISOString(),
+    is_active: sa.is_active,
+    prompt: '',
+    updated_at: new Date().toISOString(),
+    user_id: ''
+  }));
 
   // Check if session is active
-  if (session.status !== 'active') {
+  if (session.status !== 'ACTIVE') {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -63,25 +94,25 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Debate Session</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Flow Session</h1>
             <p className="text-muted-foreground">
-              {session.initial_query}
+              {session.title || session.rounds?.[0]?.query}
             </p>
           </div>
         </div>
-        
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center text-muted-foreground">
               <div className="text-lg font-medium mb-2">
-                This debate session is {session.status}
+                This flow session is {session.status}
               </div>
               <p className="text-sm mb-4">
-                {session.status === 'completed'
-                  ? 'This debate has been completed. You can view the final report.'
-                  : session.status === 'paused'
-                  ? 'This debate has been paused. Contact an administrator to resume.'
-                  : 'This debate session is not available for participation.'}
+                {session.status === 'COMPLETED'
+                  ? 'This flow has been completed. You can view the final report.'
+                  : session.status === 'CANCELLED'
+                    ? 'This flow has been cancelled. Contact an administrator to resume.'
+                    : 'This flow session is not available for processing.'}
               </p>
               <div className="flex justify-center gap-2">
                 <Button variant="outline" asChild>
@@ -89,7 +120,7 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
                     View Details
                   </Link>
                 </Button>
-                {session.status === 'completed' && (
+                {session.status === 'COMPLETED' && (
                   <Button asChild>
                     <Link href={`/dashboard/sessions/${session.id}/report`}>
                       View Report
@@ -104,40 +135,48 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
     );
   }
 
-  // Get session agents
-  const agentIds = session.session_agents?.map((sa) => sa.agent_id) || [];
-  const agentsResult = await getAgentsByIds(agentIds);
-  const agents = agentsResult.success ? agentsResult.data || [] : [];
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="h-screen flex flex-col">
+      <div className="flex items-center gap-4 p-6 border-b">
         <Button variant="outline" size="icon" asChild>
           <Link href={`/dashboard/sessions/${session.id}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Active Debate</h1>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">Active Flow</h1>
           <p className="text-muted-foreground">
-            {session.initial_query}
+            {session.title || session.rounds?.[0]?.query}
           </p>
         </div>
+        
+        {/* Display assigned agents */}
+        {agents.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Assigned Agents:</span>
+            <div className="flex gap-2">
+              {agents.map((agent) => (
+                <Badge key={agent.id} variant="secondary">
+                  {agent.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <DebateInterface 
-        session={session} 
-        agents={agents} 
-        initialRounds={rounds} 
-      />
+      <div className="flex-1">
+        <FlowVisualization agents={agents} sessionId={sessionId} />
+      </div>
     </div>
   );
 }
 
-export default function DebatePage({ params }: DebatePageProps) {
+export default async function DebatePage({ params }: DebatePageProps) {
+  const { id } = await params;
   return (
-    <Suspense fallback={<DebateInterfaceSkeleton />}>
-      <DebateContent sessionId={params.id} />
+    <Suspense fallback={<FlowVisualizationSkeleton />}>
+      <DebateContent sessionId={id} />
     </Suspense>
   );
 }

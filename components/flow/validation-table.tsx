@@ -26,23 +26,23 @@ interface ValidationTableProps {
   maxRounds: number;
 }
 
-export function ValidationTable({ 
-  validationResults, 
-  onSelectionChange, 
-  onSubmitFeedback, 
+export function ValidationTable({
+  validationResults,
+  onSelectionChange,
+  onSubmitFeedback,
   sessionId,
   currentRound,
-  maxRounds 
+  maxRounds
 }: ValidationTableProps) {
   const [selectedValidations, setSelectedValidations] = useState<string[]>([]);
   const [userFeedback, setUserFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCheckboxChange = (validationId: string, checked: boolean) => {
-    const newSelection = checked 
+    const newSelection = checked
       ? [...selectedValidations, validationId]
       : selectedValidations.filter(id => id !== validationId);
-    
+
     setSelectedValidations(newSelection);
     onSelectionChange(newSelection);
   };
@@ -95,7 +95,7 @@ export function ValidationTable({
           Validation Results - Round {currentRound} of {maxRounds}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Review the validation results below and select the ones you agree with. 
+          Review the validation results below and select the ones you agree with.
           Provide feedback to improve the next round or generate a final report.
         </p>
       </CardHeader>
@@ -103,15 +103,15 @@ export function ValidationTable({
         {/* Validation Results Table */}
         <div className="space-y-4">
           {validationResults.map((validation) => (
-            <div 
-              key={validation.id} 
+            <div
+              key={validation.id}
               className="border rounded-lg p-4 space-y-3 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-start gap-3">
                 <Checkbox
                   id={validation.id}
                   checked={selectedValidations.includes(validation.id)}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     handleCheckboxChange(validation.id, checked as boolean)
                   }
                   className="mt-1"
@@ -186,8 +186,8 @@ export function ValidationTable({
             <span>{currentRound} / {maxRounds} rounds</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(currentRound / maxRounds) * 100}%` }}
             />
           </div>

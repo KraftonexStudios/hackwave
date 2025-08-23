@@ -45,7 +45,7 @@ function AnalyticsSkeleton() {
 async function AnalyticsContent() {
   // TODO: Implement actual analytics data fetching
   // This is a placeholder for future analytics implementation
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -165,7 +165,7 @@ async function AnalyticsContent() {
             <BarChart3 className="mx-auto h-16 w-16 opacity-50 mb-4" />
             <h3 className="text-lg font-semibold mb-2">Analytics Coming Soon</h3>
             <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-              We're working on comprehensive analytics features including debate performance metrics, 
+              We're working on comprehensive analytics features including debate performance metrics,
               agent effectiveness tracking, response quality analysis, and usage insights.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-sm">

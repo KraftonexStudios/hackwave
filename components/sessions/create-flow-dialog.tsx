@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createAgent } from '@/actions/agents';
+import { createFlow } from '@/actions/flows';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,68 +31,70 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-const createAgentSchema = z.object({
+const createFlowSchema = z.object({
   name: z
     .string()
     .min(1, 'Name is required')
-    .min(2, 'Name must be at least 2 characters')
+    .min(3, 'Name must be at least 3 characters')
     .max(100, 'Name must be less than 100 characters'),
-  description: z
-    .string()
-    .max(500, 'Description must be less than 500 characters')
-    .optional(),
-  prompt: z
-    .string()
-    .min(1, 'Prompt is required')
-    .min(10, 'Prompt must be at least 10 characters')
-    .max(2000, 'Prompt must be less than 2000 characters'),
 });
 
-type CreateAgentFormData = z.infer<typeof createAgentSchema>;
+type CreateFlowFormData = z.infer<typeof createFlowSchema>;
 
-interface CreateAgentDialogProps {
+interface CreateFlowDialogProps {
   children: React.ReactNode;
 }
 
-export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
+export function CreateFlowDialog({ children }: CreateFlowDialogProps) {
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
-  const form = useForm<CreateAgentFormData>({
-    resolver: zodResolver(createAgentSchema),
+  const form = useForm<CreateFlowFormData>({
+    resolver: zodResolver(createFlowSchema),
     defaultValues: {
       name: '',
-      description: '',
-      prompt: '',
     },
   });
 
-  const onSubmit = async (data: CreateAgentFormData) => {
+
+
+  const onSubmit = async (data: CreateFlowFormData) => {
     setIsSubmitting(true);
     try {
-      const result = await createAgent(data);
+      const result = await createFlow({
+        name: data.name,
+        description: data.name, // Use name as description for now
+      });
 
       if (result.success) {
         toast({
-          title: 'Agent created successfully',
-          description: `${data.name} has been created and is ready to use.`,
+          title: 'Flow created',
+          description: result.message,
         });
-        handleOpenChange(false);
-        router.refresh();
+
+        // Close dialog first, then reset form to avoid animation conflicts
+        setOpen(false);
+        setTimeout(() => {
+          form.reset({
+            name: '',
+          });
+        }, 100);
+
+        // Navigate to the specific flow session page
+        router.push(`/dashboard/sessions/${result.data.id}`);
       } else {
         toast({
-          title: 'Failed to create agent',
-          description: result.error || 'An unexpected error occurred',
+          title: 'Error',
+          description: result.error,
           variant: 'destructive',
         });
       }
     } catch (error) {
-      console.error('Error creating agent:', error);
       toast({
         title: 'Error',
-        description: 'An unexpected error occurred while creating the agent',
+        description: 'Failed to create flow',
         variant: 'destructive',
       });
     } finally {
@@ -109,13 +111,13 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
         setTimeout(() => {
           form.reset({
             name: '',
-            description: '',
-            prompt: '',
           });
         }, 100);
       }
     }
   }, [isSubmitting, form]);
+
+
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} modal>
@@ -130,9 +132,9 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
         }}
       >
         <DialogHeader>
-          <DialogTitle>Create New Agent</DialogTitle>
+          <DialogTitle>Create New Flow</DialogTitle>
           <DialogDescription>
-            Create a new AI agent with a specific role and prompt for multi-agent debates.
+            Create a new flow with just a name. You can select agents and configure settings later on the flow page.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -144,64 +146,21 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Agent Name</FormLabel>
+                      <FormLabel>Flow Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g., Legal Expert, Data Analyst"
+                          placeholder="Enter a name for your flow"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        A descriptive name for your AI agent
+                        A short, descriptive name for this flow
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Brief description of the agent's role and expertise"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Optional description of the agent's purpose and expertise
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="prompt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>System Prompt</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="You are an expert in... Your role is to... When responding, you should..."
-                          className="resize-none"
-                          rows={6}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        The system prompt that defines the agent's behavior, expertise, and response style
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </ScrollArea>
             <DialogFooter>
@@ -220,7 +179,7 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Create Agent
+                Create Flow
               </Button>
             </DialogFooter>
           </form>

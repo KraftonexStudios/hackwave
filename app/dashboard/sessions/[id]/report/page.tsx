@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionReports } from '@/actions/reports';
+import type { Agent } from '@/database.types';
+
+type AgentWithRole = Agent & { role: string; };
 import { ReportContent } from '@/components/reports/report-content';
 import { ReportActions } from '@/components/reports/report-actions';
 import { ReportSkeleton } from '@/components/reports/report-skeleton';
@@ -20,7 +23,7 @@ interface ReportPageProps {
 
 async function getSessionData(sessionId: string) {
   const supabase = await createClient();
-  
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -39,16 +42,33 @@ async function getSessionData(sessionId: string) {
     .from('session_agents')
     .select(`
       agent_id,
+      role,
       agents (
         id,
         name,
-        role,
         description
       )
     `)
     .eq('session_id', sessionId);
 
-  const agents = sessionAgents?.map(sa => sa.agents).filter(Boolean) || [];
+  // Type the query result properly
+  type SessionAgentWithAgent = {
+    agent_id: string;
+    role: string;
+    agents: {
+      id: string;
+      name: string;
+      description: string | null;
+    } | null;
+  };
+
+  const typedSessionAgents = sessionAgents as SessionAgentWithAgent[] | null;
+  const agents = typedSessionAgents?.filter(sa => sa.agents).map(sa => ({
+    id: sa.agents!.id,
+    name: sa.agents!.name,
+    description: sa.agents!.description,
+    role: sa.role
+  })) || [];
 
   // Get rounds count
   const { count: roundsCount } = await supabase
@@ -65,7 +85,7 @@ async function getSessionData(sessionId: string) {
 
 async function ReportPageContent({ sessionId }: { sessionId: string }) {
   const sessionData = await getSessionData(sessionId);
-  
+
   if (!sessionData) {
     notFound();
   }
@@ -148,9 +168,9 @@ async function ReportPageContent({ sessionId }: { sessionId: string }) {
               </div>
             </div>
           </div>
-          
+
           <Separator className="my-4" />
-          
+
           <div>
             <h4 className="font-medium mb-2">Participating Agents</h4>
             <div className="flex flex-wrap gap-2">
@@ -161,7 +181,7 @@ async function ReportPageContent({ sessionId }: { sessionId: string }) {
               ))}
             </div>
           </div>
-          
+
           {session.description && (
             <div className="mt-4">
               <h4 className="font-medium mb-2">Description</h4>

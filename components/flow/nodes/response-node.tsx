@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -47,17 +48,17 @@ const getAgentColor = (name: string) => {
   return colors[hash % colors.length];
 };
 
-export function ResponseNode({ data }: NodeProps<ResponseNodeData>) {
+export function ResponseNode({ data }: { data: ResponseNodeData }) {
   const config = sentimentConfig[data.sentiment];
   const SentimentIcon = config.icon;
   const agentColor = getAgentColor(data.agent);
   const wordCount = data.wordCount || data.response.split(' ').length;
   const confidence = data.confidence || Math.floor(Math.random() * 30) + 70; // Mock confidence
-  
+
   return (
     <div className="min-w-[280px] max-w-[320px]">
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
-      
+
       <Card className="border-2 shadow-lg" style={{ borderColor: config.color }}>
         <CardHeader className="pb-2">
           <div className="flex items-start gap-3">
@@ -69,7 +70,7 @@ export function ResponseNode({ data }: NodeProps<ResponseNodeData>) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-sm truncate">{data.agent}</h3>
-                <Badge 
+                <Badge
                   variant="outline"
                   className="text-xs px-1.5 py-0.5 flex items-center gap-1"
                   style={{ borderColor: config.color, color: config.color }}
@@ -85,16 +86,16 @@ export function ResponseNode({ data }: NodeProps<ResponseNodeData>) {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="pt-0 space-y-3">
           {/* Response Text */}
-          <div 
+          <div
             className="p-3 rounded-lg text-sm leading-relaxed"
             style={{ backgroundColor: config.bgColor }}
           >
             <p className="text-foreground line-clamp-4">{data.response}</p>
           </div>
-          
+
           {/* Metrics */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex items-center justify-between">
@@ -106,20 +107,20 @@ export function ResponseNode({ data }: NodeProps<ResponseNodeData>) {
               <span className="font-medium">{confidence}%</span>
             </div>
           </div>
-          
+
           {/* Confidence Bar */}
           <div className="space-y-1">
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-              <div 
+              <div
                 className="h-1.5 rounded-full transition-all duration-300"
-                style={{ 
+                style={{
                   width: `${confidence}%`,
                   backgroundColor: config.color
                 }}
               ></div>
             </div>
           </div>
-          
+
           {/* Sentiment Indicator */}
           <div className="flex items-center gap-2 p-2 rounded-md" style={{ backgroundColor: config.bgColor }}>
             <MessageSquare className="h-3 w-3" style={{ color: config.color }} />
@@ -129,7 +130,7 @@ export function ResponseNode({ data }: NodeProps<ResponseNodeData>) {
           </div>
         </CardContent>
       </Card>
-      
+
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
     </div>
   );

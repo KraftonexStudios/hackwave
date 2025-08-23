@@ -29,14 +29,14 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
   const handleGenerateReport = async (reportType: 'interim' | 'final' | 'summary') => {
     setIsGenerating(true);
     try {
-      const result = await generateSessionReport(sessionId, reportType);
-      
+      const result = await generateSessionReport(sessionId, mapReportType(reportType));
+
       if (result.success && result.data) {
         toast({
           title: 'Report Generated',
           description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report has been generated successfully.`,
         });
-        
+
         // Refresh the page to show the new report
         window.location.reload();
       } else {
@@ -57,15 +57,20 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
     }
   };
 
+  const mapReportType = (type: 'interim' | 'final' | 'summary'): 'INTERIM' | 'FINAL' | 'SUMMARY' => {
+    const mapping = { interim: 'INTERIM' as const, final: 'FINAL' as const, summary: 'SUMMARY' as const };
+    return mapping[type];
+  };
+
   const handleDownloadPDF = async (reportType: 'interim' | 'final' | 'summary') => {
     setIsGeneratingPDF(true);
     try {
-      const result = await generateSessionPDF(sessionId, reportType);
-      
+      const result = await generateSessionPDF(sessionId, mapReportType(reportType));
+
       if (result.success && result.data) {
         // Download the PDF
         await PDFReportGenerator.downloadPDF(result.data.blob, result.data.filename);
-        
+
         toast({
           title: 'PDF Downloaded',
           description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report PDF has been downloaded.`,
@@ -88,7 +93,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
     }
   };
 
-  const isSessionCompleted = session.status === 'completed';
+  const isSessionCompleted = session.status === 'COMPLETED';
   const hasContent = session.current_round && session.current_round > 0;
 
   return (
@@ -118,7 +123,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Report Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {/* Generate Reports */}
           <DropdownMenuItem
             onClick={() => handleGenerateReport('final')}
@@ -127,7 +132,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
             <FileText className="h-4 w-4 mr-2" />
             Generate Final Report
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem
             onClick={() => handleGenerateReport('interim')}
             disabled={isGenerating || !hasContent}
@@ -135,7 +140,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
             <FileText className="h-4 w-4 mr-2" />
             Generate Interim Report
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem
             onClick={() => handleGenerateReport('summary')}
             disabled={isGenerating || !hasContent}
@@ -143,9 +148,9 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
             <FileText className="h-4 w-4 mr-2" />
             Generate Summary Report
           </DropdownMenuItem>
-          
+
           <DropdownMenuSeparator />
-          
+
           {/* Download PDFs */}
           <DropdownMenuItem
             onClick={() => handleDownloadPDF('final')}
@@ -154,7 +159,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
             <Download className="h-4 w-4 mr-2" />
             Download Final PDF
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem
             onClick={() => handleDownloadPDF('interim')}
             disabled={isGeneratingPDF || !hasContent}
@@ -162,7 +167,7 @@ export function ReportActions({ sessionId, session }: ReportActionsProps) {
             <Download className="h-4 w-4 mr-2" />
             Download Interim PDF
           </DropdownMenuItem>
-          
+
           <DropdownMenuItem
             onClick={() => handleDownloadPDF('summary')}
             disabled={isGeneratingPDF || !hasContent}

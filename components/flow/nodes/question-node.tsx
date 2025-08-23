@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpCircle, CheckCircle, Clock, User } from 'lucide-react';
@@ -43,23 +44,23 @@ const priorityColors = {
   high: '#ef4444',
 };
 
-export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
+export function QuestionNode({ data }: { data: QuestionNodeData }) {
   const config = statusConfig[data.status];
   const StatusIcon = config.icon;
-  
+
   return (
     <div className="min-w-[250px] max-w-[300px]">
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
-      
+
       <Card className="border-2 shadow-lg" style={{ borderColor: config.color }}>
         <CardHeader className="pb-2">
           <div className="flex items-start gap-2">
-            <div 
+            <div
               className="p-1.5 rounded-md flex-shrink-0 mt-0.5"
               style={{ backgroundColor: `${config.color}20` }}
             >
-              <StatusIcon 
-                className="h-4 w-4" 
+              <StatusIcon
+                className="h-4 w-4"
                 style={{ color: config.color }}
               />
             </div>
@@ -67,19 +68,19 @@ export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-sm">Question</h3>
                 {data.priority && (
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className="text-xs px-1.5 py-0.5"
-                    style={{ 
-                      borderColor: priorityColors[data.priority], 
-                      color: priorityColors[data.priority] 
+                    style={{
+                      borderColor: priorityColors[data.priority],
+                      color: priorityColors[data.priority]
                     }}
                   >
                     {data.priority}
                   </Badge>
                 )}
               </div>
-              <Badge 
+              <Badge
                 variant="outline"
                 className="text-xs"
                 style={{ borderColor: config.color, color: config.color }}
@@ -89,13 +90,13 @@ export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="pt-0 space-y-3">
           {/* Question Text */}
           <div className="text-sm leading-relaxed">
             <p className="text-foreground">{data.question}</p>
           </div>
-          
+
           {/* Assignment Info */}
           {data.assignedTo && (
             <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-md">
@@ -105,7 +106,7 @@ export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
               </span>
             </div>
           )}
-          
+
           {/* Status Indicator */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Status:</span>
@@ -124,7 +125,7 @@ export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
               </span>
             </div>
           </div>
-          
+
           {/* Waiting state */}
           {data.status === 'waiting' && (
             <div className="text-center py-2">
@@ -136,7 +137,7 @@ export function QuestionNode({ data }: NodeProps<QuestionNodeData>) {
           )}
         </CardContent>
       </Card>
-      
+
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
     </div>
   );

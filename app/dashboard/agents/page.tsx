@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
 import { getAgentsWithStats } from '@/actions/agents';
 import { AgentsTable } from '@/components/agents/agents-table';
-import { CreateAgentDialog } from '@/components/agents/create-agent-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Users } from 'lucide-react';
 import Link from 'next/link';
+import { CreateAgentDialog } from '@/components/agents/create-agent-dialog';
 
 function AgentsTableSkeleton() {
   return (
@@ -41,7 +41,7 @@ function AgentsTableSkeleton() {
 
 async function AgentsContent() {
   const result = await getAgentsWithStats();
-  
+
   if (!result.success) {
     return (
       <Card>

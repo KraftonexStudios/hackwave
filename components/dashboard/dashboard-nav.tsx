@@ -20,10 +20,10 @@ const navigation = [
     description: 'Manage AI agents',
   },
   {
-    title: 'Sessions',
+    title: 'Flows',
     href: '/dashboard/sessions',
     icon: MessageSquare,
-    description: 'Debate sessions',
+    description: 'AI agent flows',
   },
   {
     title: 'Analytics',
@@ -42,11 +42,12 @@ export function DashboardNav() {
         {navigation.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
-          
+
           return (
             <NavigationMenuItem key={item.href}>
-              <Link href={item.href} legacyBehavior passHref>
-                <NavigationMenuLink
+              <NavigationMenuLink asChild>
+                <Link
+                  href={item.href}
                   className={cn(
                     navigationMenuTriggerStyle(),
                     'flex items-center gap-2',
@@ -55,8 +56,8 @@ export function DashboardNav() {
                 >
                   <Icon className="h-4 w-4" />
                   {item.title}
-                </NavigationMenuLink>
-              </Link>
+                </Link>
+              </NavigationMenuLink>
             </NavigationMenuItem>
           );
         })}

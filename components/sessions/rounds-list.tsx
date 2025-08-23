@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { DebateRound, Agent, AgentResponse } from '@/database.types';
+import { Round, Agent, Responce } from '@/database.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,21 +25,21 @@ import {
 } from 'lucide-react';
 
 interface RoundsListProps {
-  rounds: (DebateRound & {
-    agent_responses?: AgentResponse[];
+  rounds: (Round & {
+    agent_responses?: Responce[];
   })[];
   agents: Agent[];
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
-    case 'completed':
+    case 'COMPLETED':
       return <CheckCircle className="h-4 w-4 text-green-600" />;
-    case 'in_progress':
+    case 'IN_PROGRESS':
       return <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />;
-    case 'failed':
+    case 'FAILED':
       return <XCircle className="h-4 w-4 text-red-600" />;
-    case 'pending':
+    case 'PENDING':
       return <Clock className="h-4 w-4 text-yellow-600" />;
     default:
       return <AlertCircle className="h-4 w-4 text-gray-600" />;
@@ -48,13 +48,13 @@ function getStatusIcon(status: string) {
 
 function getStatusVariant(status: string) {
   switch (status) {
-    case 'completed':
+    case 'COMPLETED':
       return 'secondary';
-    case 'in_progress':
+    case 'IN_PROGRESS':
       return 'default';
-    case 'failed':
+    case 'FAILED':
       return 'destructive';
-    case 'pending':
+    case 'PENDING':
       return 'outline';
     default:
       return 'secondary';
@@ -63,13 +63,13 @@ function getStatusVariant(status: string) {
 
 function getResponseStatusIcon(status: string) {
   switch (status) {
-    case 'completed':
+    case 'ACCEPTED':
       return <CheckCircle className="h-3 w-3 text-green-600" />;
-    case 'processing':
+    case 'VALIDATED':
       return <Loader2 className="h-3 w-3 text-blue-600 animate-spin" />;
-    case 'failed':
+    case 'REJECTED':
       return <XCircle className="h-3 w-3 text-red-600" />;
-    case 'pending':
+    case 'SUBMITTED':
       return <Clock className="h-3 w-3 text-yellow-600" />;
     default:
       return <AlertCircle className="h-3 w-3 text-gray-600" />;
@@ -117,14 +117,14 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Debate Rounds
+            Flow Rounds
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center text-muted-foreground py-8">
             <MessageCircle className="mx-auto h-12 w-12 opacity-50 mb-4" />
             <p>No rounds have been started yet</p>
-            <p className="text-sm">Begin the debate to see rounds appear here</p>
+            <p className="text-sm">Start the flow to see rounds appear here</p>
           </div>
         </CardContent>
       </Card>
@@ -136,7 +136,7 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5" />
-          Debate Rounds ({rounds.length})
+          Flow Rounds ({rounds.length})
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -145,7 +145,7 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
             const isOpen = openRounds.has(round.id);
             const responses = round.agent_responses || [];
             const completedResponses = responses.filter(
-              (r) => r.status === 'completed'
+              (r) => r.status === 'ACCEPTED'
             ).length;
 
             return (
@@ -177,14 +177,14 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
                         {completedResponses}/{responses.length} responses
                       </span>
                       <span>•</span>
-                      <span>{formatDate(round.created_at)}</span>
+                      <span>{formatDate(round.started_at)}</span>
                     </div>
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="px-4 pb-4">
                     <Separator className="mb-4" />
-                    
+
                     {/* Round Details */}
                     <div className="space-y-4">
                       {round.distributor_response && (
@@ -192,7 +192,7 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
                           <h4 className="font-medium text-sm mb-2">
                             Task Distribution
                           </h4>
-                          <p className="text-sm">{round.distributor_response}</p>
+                          <p className="text-sm">{typeof round.distributor_response === 'string' ? round.distributor_response : JSON.stringify(round.distributor_response)}</p>
                         </div>
                       )}
 
@@ -230,17 +230,17 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
                                           </span>
                                         </div>
                                       </div>
-                                      {response.status === 'completed' && response.content ? (
+                                      {(response.status === 'ACCEPTED' || response.status === 'VALIDATED') && response.response ? (
                                         <ScrollArea className="max-h-32">
                                           <p className="text-sm whitespace-pre-wrap">
-                                            {response.content}
+                                            {response.response}
                                           </p>
                                         </ScrollArea>
-                                      ) : response.status === 'failed' && response.error_message ? (
+                                      ) : response.status === 'REJECTED' ? (
                                         <p className="text-sm text-red-600">
-                                          Error: {response.error_message}
+                                          Response was rejected
                                         </p>
-                                      ) : response.status === 'processing' ? (
+                                      ) : response.status === 'SUBMITTED' ? (
                                         <p className="text-sm text-muted-foreground">
                                           Generating response...
                                         </p>
@@ -253,9 +253,9 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
                                         <span>
                                           Created: {formatDate(response.created_at)}
                                         </span>
-                                        {response.processing_time_ms && (
+                                        {response.processing_time && (
                                           <span>
-                                            Processing: {response.processing_time_ms}ms
+                                            Processing: {response.processing_time}ms
                                           </span>
                                         )}
                                       </div>
@@ -269,12 +269,12 @@ export function RoundsList({ rounds, agents }: RoundsListProps) {
                       )}
 
                       {/* Validation Results */}
-                      {round.validation_summary && (
+                      {round.distributor_query && (
                         <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
                           <h4 className="font-medium text-sm mb-2">
-                            Validation Summary
+                            Distributor Query
                           </h4>
-                          <p className="text-sm">{round.validation_summary}</p>
+                          <p className="text-sm">{round.distributor_query}</p>
                         </div>
                       )}
                     </div>

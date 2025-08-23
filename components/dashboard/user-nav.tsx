@@ -29,12 +29,12 @@ export function UserNav({ user }: UserNavProps) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       toast({
         title: 'Signed out successfully',
         description: 'You have been logged out of your account.',
       });
-      
+
       router.push('/auth/login');
       router.refresh();
     } catch (error) {
@@ -64,9 +64,9 @@ export function UserNav({ user }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage 
-              src={user.user_metadata?.avatar_url} 
-              alt={getUserDisplayName()} 
+            <AvatarImage
+              src={user.user_metadata?.avatar_url}
+              alt={getUserDisplayName()}
             />
             <AvatarFallback>
               {getUserInitials(user.email || '')}
@@ -95,8 +95,8 @@ export function UserNav({ user }: UserNavProps) {
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem 
-          className="cursor-pointer text-red-600 focus:text-red-600" 
+        <DropdownMenuItem
+          className="cursor-pointer text-red-600 focus:text-red-600"
           onClick={handleSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" />

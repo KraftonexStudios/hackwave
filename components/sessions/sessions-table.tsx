@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { DebateSession } from '@/database.types';
-import { deleteDebateSession } from '@/actions/debates';
+import type { Session } from '@/database.types';
+import { deleteFlow } from '@/actions/flows';
 import {
   Table,
   TableBody,
@@ -45,18 +45,18 @@ import {
 import Link from 'next/link';
 
 interface SessionsTableProps {
-  sessions: DebateSession[];
+  sessions: Session[];
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
-    case 'active':
+    case 'ACTIVE':
       return <Play className="h-4 w-4" />;
-    case 'completed':
+    case 'COMPLETED':
       return <CheckCircle className="h-4 w-4" />;
-    case 'paused':
+    case 'PAUSED':
       return <Pause className="h-4 w-4" />;
-    case 'cancelled':
+    case 'CANCELLED':
       return <XCircle className="h-4 w-4" />;
     default:
       return <Clock className="h-4 w-4" />;
@@ -65,13 +65,13 @@ function getStatusIcon(status: string) {
 
 function getStatusVariant(status: string) {
   switch (status) {
-    case 'active':
+    case 'ACTIVE':
       return 'default';
-    case 'completed':
+    case 'COMPLETED':
       return 'secondary';
-    case 'paused':
+    case 'PAUSED':
       return 'outline';
-    case 'cancelled':
+    case 'CANCELLED':
       return 'destructive';
     default:
       return 'secondary';
@@ -88,10 +88,10 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
 
     setIsDeleting(true);
     try {
-      const result = await deleteDebateSession(deleteSessionId);
+      const result = await deleteFlow(deleteSessionId);
       if (result.success) {
         toast({
-          title: 'Session deleted',
+          title: 'Flow deleted',
           description: result.message,
         });
       } else {
@@ -104,7 +104,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to delete session',
+        description: 'Failed to delete flow',
         variant: 'destructive',
       });
     } finally {
@@ -127,13 +127,13 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Sessions ({sessions.length})</CardTitle>
+          <CardTitle>Flows ({sessions.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Query</TableHead>
+                <TableHead>Title</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Rounds</TableHead>
                 <TableHead>Created</TableHead>
@@ -146,13 +146,11 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                 <TableRow key={session.id}>
                   <TableCell className="max-w-[300px]">
                     <div className="truncate font-medium">
-                      {session.initial_query}
+                      {session.title || 'Untitled Flow'}
                     </div>
-                    {session.description && (
-                      <div className="text-sm text-muted-foreground truncate">
-                        {session.description}
-                      </div>
-                    )}
+                    <div className="text-sm text-muted-foreground truncate">
+                      {session.initial_query || 'No initial query'}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -165,7 +163,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {session.current_round || 0} / {session.max_rounds}
+                      {session.current_round || 0} rounds
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -186,14 +184,14 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                         <DropdownMenuItem asChild>
                           <Link href={`/dashboard/sessions/${session.id}`}>
                             <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            View Flow
                           </Link>
                         </DropdownMenuItem>
-                        {session.status === 'active' && (
+                        {session.status === 'ACTIVE' && (
                           <DropdownMenuItem asChild>
                             <Link href={`/dashboard/sessions/${session.id}/debate`}>
                               <Play className="mr-2 h-4 w-4" />
-                              Continue Debate
+                              Process Flow
                             </Link>
                           </DropdownMenuItem>
                         )}
@@ -224,7 +222,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              debate session and all associated rounds, responses, and feedback.
+              flow and all associated rounds, responses, and feedback.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

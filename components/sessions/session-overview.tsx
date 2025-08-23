@@ -1,6 +1,6 @@
 'use client';
 
-import { DebateSession, Agent } from '@/database.types';
+import type { Session, Agent, SessionAgents } from '@/database.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -17,19 +17,21 @@ import {
 } from 'lucide-react';
 
 interface SessionOverviewProps {
-  session: DebateSession;
+  session: Session & {
+    session_agents?: SessionAgents[];
+  };
   agents: Agent[];
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
-    case 'active':
+    case 'ACTIVE':
       return <Play className="h-4 w-4" />;
-    case 'completed':
+    case 'COMPLETED':
       return <CheckCircle className="h-4 w-4" />;
-    case 'paused':
+    case 'PAUSED':
       return <Pause className="h-4 w-4" />;
-    case 'cancelled':
+    case 'CANCELLED':
       return <XCircle className="h-4 w-4" />;
     default:
       return <Clock className="h-4 w-4" />;
@@ -38,13 +40,13 @@ function getStatusIcon(status: string) {
 
 function getStatusVariant(status: string) {
   switch (status) {
-    case 'active':
+    case 'ACTIVE':
       return 'default';
-    case 'completed':
+    case 'COMPLETED':
       return 'secondary';
-    case 'paused':
+    case 'PAUSED':
       return 'outline';
-    case 'cancelled':
+    case 'CANCELLED':
       return 'destructive';
     default:
       return 'secondary';
@@ -53,13 +55,13 @@ function getStatusVariant(status: string) {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case 'active':
+    case 'ACTIVE':
       return 'text-green-600';
-    case 'completed':
+    case 'COMPLETED':
       return 'text-blue-600';
-    case 'paused':
+    case 'PAUSED':
       return 'text-yellow-600';
-    case 'cancelled':
+    case 'CANCELLED':
       return 'text-red-600';
     default:
       return 'text-gray-600';
@@ -86,8 +88,8 @@ export function SessionOverview({ session, agents }: SessionOverviewProps) {
       .slice(0, 2);
   };
 
-  const progressPercentage = session.max_rounds > 0 
-    ? ((session.current_round || 0) / session.max_rounds) * 100 
+  const progressPercentage = session.max_rounds > 0
+    ? ((session.current_round || 0) / session.max_rounds) * 100
     : 0;
 
   return (
@@ -119,11 +121,11 @@ export function SessionOverview({ session, agents }: SessionOverviewProps) {
           </div>
 
           {/* Description */}
-          {session.description && (
+          {session.initial_query && (
             <div>
-              <h3 className="font-medium mb-2">Description</h3>
+              <h3 className="font-medium mb-2">Initial Query</h3>
               <p className="text-sm text-muted-foreground">
-                {session.description}
+                {session.initial_query}
               </p>
             </div>
           )}
@@ -214,9 +216,8 @@ export function SessionOverview({ session, agents }: SessionOverviewProps) {
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <div
-                          className={`w-2 h-2 rounded-full ${
-                            sessionAgent?.is_active ? 'bg-green-500' : 'bg-gray-400'
-                          }`}
+                          className={`w-2 h-2 rounded-full ${sessionAgent?.is_active ? 'bg-green-500' : 'bg-gray-400'
+                            }`}
                         />
                         <span className="text-xs text-muted-foreground">
                           {sessionAgent?.is_active ? 'Active' : 'Inactive'}

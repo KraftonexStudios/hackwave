@@ -1,19 +1,20 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getDebateSession, getSessionRounds } from '@/actions/debates';
-import { getAgentsByIds } from '@/actions/agents';
+import { getFlow, getFlowRounds } from '@/actions/flows';
+import { getSessionAgents } from '@/actions/session-agents';
 import { SessionOverview } from '@/components/sessions/session-overview';
 import { RoundsList } from '@/components/sessions/rounds-list';
+import { AssignAgentsDialog } from '@/components/sessions/assign-agents-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Play, FileText } from 'lucide-react';
+import { ArrowLeft, Play, FileText, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 interface SessionPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 function SessionDetailSkeleton() {
@@ -41,22 +42,46 @@ function SessionDetailSkeleton() {
 }
 
 async function SessionContent({ sessionId }: { sessionId: string }) {
-  const [sessionResult, roundsResult] = await Promise.all([
-    getDebateSession(sessionId),
-    getSessionRounds(sessionId),
+  const [sessionResult, roundsResult, agentsResult] = await Promise.all([
+    getFlow(sessionId),
+    getFlowRounds(sessionId),
+    getSessionAgents(sessionId),
   ]);
 
   if (!sessionResult.success || !sessionResult.data) {
     notFound();
   }
 
+  // Type the session agents result properly
+  type SessionAgentWithAgent = {
+    id: string;
+    agent_id: string;
+    role: "PARTICIPANT" | "VALIDATOR" | "MODERATOR" | "TASK_DISTRIBUTOR" | "REPORT_GENERATOR";
+    is_active: boolean;
+    joined_at: string;
+    session_id: string;
+    agents: {
+      id: string;
+      name: string;
+      description: string | null;
+    } | null;
+  };
+
   const session = sessionResult.data;
   const rounds = roundsResult.success ? roundsResult.data || [] : [];
+  const sessionAgents = agentsResult.success ? (agentsResult.data as SessionAgentWithAgent[] || []) : [];
 
-  // Get session agents
-  const agentIds = session.session_agents?.map((sa) => sa.agent_id) || [];
-  const agentsResult = await getAgentsByIds(agentIds);
-  const agents = agentsResult.success ? agentsResult.data || [] : [];
+  // Extract agent data from sessionAgents
+  const agents = sessionAgents.filter(sa => sa.agents).map(sa => ({
+    id: sa.agents!.id,
+    name: sa.agents!.name,
+    description: sa.agents!.description,
+    created_at: new Date().toISOString(),
+    is_active: sa.is_active,
+    prompt: '',
+    updated_at: new Date().toISOString(),
+    user_id: ''
+  }));
 
   return (
     <div className="space-y-6">
@@ -68,22 +93,28 @@ async function SessionContent({ sessionId }: { sessionId: string }) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Session Details</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Flow Details</h1>
             <p className="text-muted-foreground">
-              {session.initial_query}
+              {session.title || session.rounds?.[0]?.query}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {session.status === 'active' && (
+          <AssignAgentsDialog sessionId={session.id} currentAgents={sessionAgents}>
+            <Button variant="outline">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Assign Agents
+            </Button>
+          </AssignAgentsDialog>
+          {session.status === 'ACTIVE' && (
             <Button asChild>
               <Link href={`/dashboard/sessions/${session.id}/debate`}>
                 <Play className="mr-2 h-4 w-4" />
-                Continue Debate
+                Process Flow
               </Link>
             </Button>
           )}
-          {session.status === 'completed' && (
+          {session.status === 'COMPLETED' && (
             <Button variant="outline" asChild>
               <Link href={`/dashboard/sessions/${session.id}/report`}>
                 <FileText className="mr-2 h-4 w-4" />
@@ -106,24 +137,24 @@ async function SessionContent({ sessionId }: { sessionId: string }) {
               <div className="space-y-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-primary">
-                    {session.current_round || 0}
+                    {rounds.length}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Current Round
+                    Total Rounds
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <div>
                     <div className="text-lg font-semibold">
-                      {session.max_rounds}
+                      {session.status}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Max Rounds
+                      Status
                     </div>
                   </div>
                   <div>
                     <div className="text-lg font-semibold">
-                      {agents.length}
+                      {sessionAgents.length}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Agents
@@ -140,11 +171,17 @@ async function SessionContent({ sessionId }: { sessionId: string }) {
               <div className="space-y-3">
                 <h3 className="font-medium">Quick Actions</h3>
                 <div className="space-y-2">
+                  <AssignAgentsDialog sessionId={session.id} currentAgents={sessionAgents}>
+                    <Button className="w-full" variant="outline">
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Assign Agents
+                    </Button>
+                  </AssignAgentsDialog>
                   {session.status === 'active' && (
                     <Button className="w-full" asChild>
                       <Link href={`/dashboard/sessions/${session.id}/debate`}>
                         <Play className="mr-2 h-4 w-4" />
-                        Continue Debate
+                        Process Flow
                       </Link>
                     </Button>
                   )}
@@ -184,10 +221,12 @@ async function SessionContent({ sessionId }: { sessionId: string }) {
   );
 }
 
-export default function SessionPage({ params }: SessionPageProps) {
+export default async function SessionPage({ params }: SessionPageProps) {
+  const { id } = await params;
+  
   return (
     <Suspense fallback={<SessionDetailSkeleton />}>
-      <SessionContent sessionId={params.id} />
+      <SessionContent sessionId={id} />
     </Suspense>
   );
 }

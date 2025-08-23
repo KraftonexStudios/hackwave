@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
-import { getDebateSessions } from '@/actions/debates';
+import { getFlows } from '@/actions/flows';
 import { SessionsTable } from '@/components/sessions/sessions-table';
-import { CreateSessionDialog } from '@/components/sessions/create-session-dialog';
+import { CreateFlowDialog as CreateSessionDialog } from '@/components/sessions/create-flow-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +24,7 @@ function SessionsTableSkeleton() {
 }
 
 async function SessionsContent() {
-  const result = await getDebateSessions();
+  const result = await getFlows();
 
   if (!result.success) {
     return (
@@ -32,7 +32,7 @@ async function SessionsContent() {
         <CardContent className="pt-6">
           <div className="text-center text-muted-foreground">
             <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">Failed to load sessions</p>
+            <p className="text-lg font-medium mb-2">Failed to load flows</p>
             <p className="text-sm">{result.error}</p>
           </div>
         </CardContent>
@@ -48,14 +48,14 @@ async function SessionsContent() {
         <CardContent className="pt-6">
           <div className="text-center text-muted-foreground">
             <MessageSquare className="mx-auto h-12 w-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No debate sessions yet</p>
+            <p className="text-lg font-medium mb-2">No flows yet</p>
             <p className="text-sm mb-4">
-              Create your first debate session to start multi-agent discussions
+              Create your first flow to start AI agent processing
             </p>
             <CreateSessionDialog>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Create First Session
+                Create First Flow
               </Button>
             </CreateSessionDialog>
           </div>
@@ -72,15 +72,15 @@ export default function SessionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Debate Sessions</h1>
+          <h1 className="text-3xl font-bold tracking-tight">AI Flows</h1>
           <p className="text-muted-foreground">
-            Manage and monitor your multi-agent debate sessions
+            Manage and monitor your AI agent flows
           </p>
         </div>
         <CreateSessionDialog>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Session
+            New Flow
           </Button>
         </CreateSessionDialog>
       </div>

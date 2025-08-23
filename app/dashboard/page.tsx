@@ -1,7 +1,8 @@
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { getAgentsWithStats } from '@/actions/agents';
-import { getDebateSessions } from '@/actions/debates';
+import { getFlows } from '@/actions/flows';
+import type { Session } from '@/database.types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,10 +51,10 @@ function DashboardSkeleton() {
 async function DashboardContent() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   const [agentsResult, sessionsResult] = await Promise.all([
     getAgentsWithStats(),
-    getDebateSessions(),
+    getFlows(),
   ]);
 
   const agents = agentsResult.success ? agentsResult.data || [] : [];
@@ -63,7 +64,7 @@ async function DashboardContent() {
     totalAgents: agents.length,
     activeAgents: agents.filter(agent => agent.is_active).length,
     totalSessions: sessions.length,
-    activeSessions: sessions.filter(session => session.status === 'active').length,
+    activeSessions: sessions.filter((session: Session) => session.status === 'ACTIVE').length,
   };
 
   const recentSessions = sessions.slice(0, 5);
@@ -91,7 +92,7 @@ async function DashboardContent() {
           <Button asChild variant="outline">
             <Link href="/dashboard/sessions">
               <Plus className="mr-2 h-4 w-4" />
-              New Session
+              New Flow
             </Link>
           </Button>
         </div>
@@ -113,7 +114,7 @@ async function DashboardContent() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Flows</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -125,13 +126,13 @@ async function DashboardContent() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Debates</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Flows</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.activeSessions}</div>
             <p className="text-xs text-muted-foreground">
-              Currently running
+              Currently processing
             </p>
           </CardContent>
         </Card>
@@ -155,36 +156,36 @@ async function DashboardContent() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Sessions</CardTitle>
+            <CardTitle>Recent Flows</CardTitle>
             <CardDescription>
-              Your latest debate sessions
+              Your latest AI agent flows
             </CardDescription>
           </CardHeader>
           <CardContent>
             {recentSessions.length === 0 ? (
               <div className="text-center py-6">
                 <MessageSquare className="mx-auto h-12 w-12 opacity-50 mb-4" />
-                <p className="text-muted-foreground">No sessions yet</p>
+                <p className="text-muted-foreground">No flows yet</p>
                 <Button asChild className="mt-2" size="sm">
                   <Link href="/dashboard/sessions">
-                    Create your first session
+                    Create your first flow
                   </Link>
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
-                {recentSessions.map((session) => (
+                {recentSessions.map((session: Session) => (
                   <div key={session.id} className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
-                        {session.initial_query}
+                        {session.title || 'Untitled Flow'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(session.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <Button asChild variant="ghost" size="sm">
-                      <Link href={`/dashboard/sessions/${session.id}`}>
+                      <Link href={`/dashboard/sessions/${session.id}/debate`}>
                         View
                       </Link>
                     </Button>

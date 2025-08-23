@@ -39,7 +39,7 @@ export function ReportSkeleton() {
               </div>
             ))}
           </div>
-          
+
           <div className="border-t pt-4">
             <Skeleton className="h-5 w-32 mb-2" /> {/* Agents title */}
             <div className="flex flex-wrap gap-2">
@@ -48,7 +48,7 @@ export function ReportSkeleton() {
               ))}
             </div>
           </div>
-          
+
           <div className="mt-4">
             <Skeleton className="h-5 w-24 mb-2" /> {/* Description title */}
             <Skeleton className="h-4 w-full" /> {/* Description text */}
@@ -94,7 +94,7 @@ export function ReportSkeleton() {
                   <Skeleton key={i} className="h-4 w-full" style={{ width: `${Math.random() * 40 + 60}%` }} />
                 ))}
               </div>
-              
+
               <div className="mt-4 pt-4 border-t">
                 <Skeleton className="h-4 w-32 mb-2" /> {/* Metadata title */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

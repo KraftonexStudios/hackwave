@@ -1,11 +1,11 @@
-import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
-import { generateObject, generateText, streamText } from 'ai';
-import { z } from 'zod';
-import type { Agent } from '@/database.types';
+import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateObject, generateText, streamText } from "ai";
+import { z } from "zod";
+import type { Agent } from "@/database.types";
 
 // AI Provider configuration
-export type AIProvider = 'openai' | 'anthropic';
+export type AIProvider = "openai" | "anthropic";
 
 export interface AIConfig {
   provider: AIProvider;
@@ -16,14 +16,14 @@ export interface AIConfig {
 
 const defaultConfigs: Record<AIProvider, AIConfig> = {
   openai: {
-    provider: 'openai',
-    model: 'gpt-4-turbo-preview',
+    provider: "openai",
+    model: "gpt-4-turbo-preview",
     temperature: 0.7,
     maxTokens: 2000,
   },
   anthropic: {
-    provider: 'anthropic',
-    model: 'claude-3-sonnet-20240229',
+    provider: "anthropic",
+    model: "claude-3-sonnet-20240229",
     temperature: 0.7,
     maxTokens: 2000,
   },
@@ -32,9 +32,9 @@ const defaultConfigs: Record<AIProvider, AIConfig> = {
 // Get AI model instance based on provider
 function getModel(config: AIConfig) {
   switch (config.provider) {
-    case 'openai':
+    case "openai":
       return openai(config.model);
-    case 'anthropic':
+    case "anthropic":
       return anthropic(config.model);
     default:
       throw new Error(`Unsupported AI provider: ${config.provider}`);
@@ -43,34 +43,40 @@ function getModel(config: AIConfig) {
 
 // Schema for task distribution response
 const TaskDistributionSchema = z.object({
-  tasks: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    description: z.string(),
-    priority: z.enum(['low', 'medium', 'high', 'critical']),
-    requiredExpertise: z.array(z.string()),
-    estimatedComplexity: z.number().min(1).max(10),
-  })),
-  recommendedAgents: z.array(z.object({
-    agentId: z.string(),
-    taskIds: z.array(z.string()),
-    reasoning: z.string(),
-    confidence: z.number().min(0).max(1),
-  })),
+  tasks: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      priority: z.enum(["low", "medium", "high", "critical"]),
+      requiredExpertise: z.array(z.string()),
+      estimatedComplexity: z.number().min(1).max(10),
+    })
+  ),
+  recommendedAgents: z.array(
+    z.object({
+      agentId: z.string(),
+      taskIds: z.array(z.string()),
+      reasoning: z.string(),
+      confidence: z.number().min(0).max(1),
+    })
+  ),
   overallStrategy: z.string(),
 });
 
 // Schema for validation response
 const ValidationSchema = z.object({
   overallScore: z.number().min(0).max(100),
-  responses: z.array(z.object({
-    responseId: z.string(),
-    score: z.number().min(0).max(100),
-    strengths: z.array(z.string()),
-    weaknesses: z.array(z.string()),
-    suggestions: z.array(z.string()),
-    isAcceptable: z.boolean(),
-  })),
+  responses: z.array(
+    z.object({
+      responseId: z.string(),
+      score: z.number().min(0).max(100),
+      strengths: z.array(z.string()),
+      weaknesses: z.array(z.string()),
+      suggestions: z.array(z.string()),
+      isAcceptable: z.boolean(),
+    })
+  ),
   consensus: z.object({
     hasConsensus: z.boolean(),
     consensusPoints: z.array(z.string()),
@@ -87,7 +93,7 @@ const ValidationSchema = z.object({
 export class TaskDistributorAgent {
   private config: AIConfig;
 
-  constructor(provider: AIProvider = 'openai') {
+  constructor(provider: AIProvider = "openai") {
     this.config = defaultConfigs[provider];
   }
 
@@ -97,7 +103,7 @@ export class TaskDistributorAgent {
     context?: string
   ) {
     const model = getModel(this.config);
-    
+
     const systemPrompt = `You are a Task Distributor Agent responsible for analyzing complex queries and breaking them down into specific tasks for specialized agents.
 
 Your role:
@@ -107,11 +113,16 @@ Your role:
 4. Provide an overall strategy for approaching the problem
 
 Available Agents:
-${availableAgents.map(agent => 
-  `- ${agent.name}: ${agent.description}\n  Expertise: ${agent.prompt.substring(0, 200)}...`
-).join('\n')}
+${availableAgents
+  .map(
+    (agent) =>
+      `- ${agent.name}: ${
+        agent.description
+      }\n  Expertise: ${agent.prompt.substring(0, 200)}...`
+  )
+  .join("\n")}
 
-${context ? `Additional Context: ${context}` : ''}
+${context ? `Additional Context: ${context}` : ""}
 
 Provide a structured response that will guide the debate process effectively.`;
 
@@ -132,7 +143,7 @@ Provide a structured response that will guide the debate process effectively.`;
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         data: null,
       };
     }
@@ -143,7 +154,7 @@ Provide a structured response that will guide the debate process effectively.`;
 export class AgentResponseGenerator {
   private config: AIConfig;
 
-  constructor(provider: AIProvider = 'openai') {
+  constructor(provider: AIProvider = "openai") {
     this.config = defaultConfigs[provider];
   }
 
@@ -154,7 +165,7 @@ export class AgentResponseGenerator {
     previousResponses?: Array<{ agentName: string; response: string }>
   ) {
     const model = getModel(this.config);
-    
+
     const systemPrompt = `${agent.prompt}
 
 You are participating in a multi-agent debate system. Your role is to provide thoughtful, well-reasoned responses based on your expertise.
@@ -167,12 +178,13 @@ Guidelines:
 5. Include reasoning for your conclusions
 6. Acknowledge limitations or uncertainties
 
-${context ? `Context: ${context}` : ''}
+${context ? `Context: ${context}` : ""}
 
-${previousResponses && previousResponses.length > 0 ? 
-  `Previous responses in this debate:
-${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` : 
-  ''
+${
+  previousResponses && previousResponses.length > 0
+    ? `Previous responses in this debate:
+${previousResponses.map((r) => `${r.agentName}: ${r.response}`).join("\n\n")}`
+    : ""
 }`;
 
     try {
@@ -180,8 +192,15 @@ ${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` :
         model,
         system: systemPrompt,
         prompt: query,
+        providerOptions: {
+          groq: {
+            reasoningFormat: 'parsed',
+            reasoningEffort: 'default',
+            parallelToolCalls: true,
+            serviceTier: 'flex'
+          }
+        },
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens,
       });
 
       return {
@@ -193,8 +212,8 @@ ${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` :
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        response: '',
+        error: error instanceof Error ? error.message : "Unknown error",
+        response: "",
       };
     }
   }
@@ -206,37 +225,45 @@ ${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` :
     previousResponses?: Array<{ agentName: string; response: string }>
   ) {
     const model = getModel(this.config);
-    
+
     const systemPrompt = `${agent.prompt}
 
 You are participating in a multi-agent debate system. Provide thoughtful, well-reasoned responses based on your expertise.
 
-${context ? `Context: ${context}` : ''}
+${context ? `Context: ${context}` : ""}
 
-${previousResponses && previousResponses.length > 0 ? 
-  `Previous responses:
-${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` : 
-  ''
+${
+  previousResponses && previousResponses.length > 0
+    ? `Previous responses:
+${previousResponses.map((r) => `${r.agentName}: ${r.response}`).join("\n\n")}`
+    : ""
 }`;
 
     try {
-      const result = await streamText({
+      const result = await generateText({
         model,
         system: systemPrompt,
         prompt: query,
+        providerOptions: {
+          groq: {
+            reasoningFormat: 'parsed',
+            reasoningEffort: 'default',
+            parallelToolCalls: true,
+            serviceTier: 'flex'
+          }
+        },
         temperature: this.config.temperature,
-        maxTokens: this.config.maxTokens,
       });
 
       return {
         success: true,
-        stream: result.textStream,
+        stream: result.text,
         usage: result.usage,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         stream: null,
       };
     }
@@ -252,15 +279,15 @@ ${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` :
     ];
 
     const reasoningParts: string[] = [];
-    
-    reasoningPatterns.forEach(pattern => {
+
+    reasoningPatterns.forEach((pattern) => {
       const matches = response.match(pattern);
       if (matches) {
         reasoningParts.push(...matches);
       }
     });
 
-    return reasoningParts.join(' ') || 'No explicit reasoning provided.';
+    return reasoningParts.join(" ") || "No explicit reasoning provided.";
   }
 }
 
@@ -268,7 +295,7 @@ ${previousResponses.map(r => `${r.agentName}: ${r.response}`).join('\n\n')}` :
 export class ValidatorAgent {
   private config: AIConfig;
 
-  constructor(provider: AIProvider = 'anthropic') {
+  constructor(provider: AIProvider = "anthropic") {
     this.config = defaultConfigs[provider];
   }
 
@@ -283,18 +310,18 @@ export class ValidatorAgent {
     criteria?: string[]
   ) {
     const model = getModel(this.config);
-    
+
     const defaultCriteria = [
-      'Accuracy and factual correctness',
-      'Relevance to the original query',
-      'Logical consistency',
-      'Completeness of the response',
-      'Clarity and coherence',
-      'Evidence and supporting arguments',
+      "Accuracy and factual correctness",
+      "Relevance to the original query",
+      "Logical consistency",
+      "Completeness of the response",
+      "Clarity and coherence",
+      "Evidence and supporting arguments",
     ];
 
     const evaluationCriteria = criteria || defaultCriteria;
-    
+
     const systemPrompt = `You are a Validator Agent responsible for evaluating and synthesizing responses from multiple AI agents in a debate system.
 
 Your responsibilities:
@@ -305,14 +332,19 @@ Your responsibilities:
 5. Determine if responses are acceptable for the current round
 
 Evaluation Criteria:
-${evaluationCriteria.map((c, i) => `${i + 1}. ${c}`).join('\n')}
+${evaluationCriteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 Original Query: "${query}"
 
 Responses to evaluate:
-${responses.map((r, i) => 
-  `Response ${i + 1} (${r.agentName}):\n${r.response}\n${r.reasoning ? `Reasoning: ${r.reasoning}` : ''}`
-).join('\n\n')}
+${responses
+  .map(
+    (r, i) =>
+      `Response ${i + 1} (${r.agentName}):\n${r.response}\n${
+        r.reasoning ? `Reasoning: ${r.reasoning}` : ""
+      }`
+  )
+  .join("\n\n")}
 
 Provide a comprehensive validation analysis.`;
 
@@ -321,7 +353,8 @@ Provide a comprehensive validation analysis.`;
         model,
         schema: ValidationSchema,
         system: systemPrompt,
-        prompt: 'Evaluate these responses and provide your validation analysis.',
+        prompt:
+          "Evaluate these responses and provide your validation analysis.",
         temperature: 0.3, // Lower temperature for more consistent validation
       });
 
@@ -333,7 +366,7 @@ Provide a comprehensive validation analysis.`;
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         validation: null,
       };
     }
@@ -344,7 +377,7 @@ Provide a comprehensive validation analysis.`;
 export class ReportGeneratorAgent {
   private config: AIConfig;
 
-  constructor(provider: AIProvider = 'anthropic') {
+  constructor(provider: AIProvider = "anthropic") {
     this.config = defaultConfigs[provider];
   }
 
@@ -362,10 +395,10 @@ export class ReportGeneratorAgent {
         userFeedback?: string;
       }>;
     },
-    reportType: 'interim' | 'final' | 'summary' = 'final'
+    reportType: "interim" | "final" | "summary" = "final"
   ) {
     const model = getModel(this.config);
-    
+
     const systemPrompt = `You are a Report Generator Agent responsible for creating comprehensive reports from multi-agent debate sessions.
 
 Your task is to generate a ${reportType} report that:
@@ -379,21 +412,25 @@ Report Type: ${reportType.toUpperCase()}
 Original Query: "${sessionData.query}"
 
 Debate Summary:
-${sessionData.rounds.map((round, i) => 
-  `Round ${round.roundNumber}:\n${round.responses.map(r => 
-    `- ${r.agentName}: ${r.response.substring(0, 200)}...`
-  ).join('\n')}\n${round.userFeedback ? `User Feedback: ${round.userFeedback}` : ''}`
-).join('\n\n')}
+${sessionData.rounds
+  .map(
+    (round, i) =>
+      `Round ${round.roundNumber}:\n${round.responses
+        .map((r) => `- ${r.agentName}: ${r.response.substring(0, 200)}...`)
+        .join("\n")}\n${
+        round.userFeedback ? `User Feedback: ${round.userFeedback}` : ""
+      }`
+  )
+  .join("\n\n")}
 
 Generate a comprehensive ${reportType} report in markdown format.`;
 
     try {
-      const result = await generateText({
+      const result = await streamText({
         model,
         system: systemPrompt,
         prompt: `Create a detailed ${reportType} report analyzing this multi-agent debate session.`,
         temperature: 0.4,
-        maxTokens: 4000,
       });
 
       return {
@@ -404,20 +441,20 @@ Generate a comprehensive ${reportType} report in markdown format.`;
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        report: '',
+        error: error instanceof Error ? error.message : "Unknown error",
+        report: "",
       };
     }
   }
 }
 
 // Factory function to create agent instances
-export function createAgentSystem(provider: AIProvider = 'openai') {
+export function createAgentSystem(provider: AIProvider = "openai") {
   return {
     taskDistributor: new TaskDistributorAgent(provider),
     responseGenerator: new AgentResponseGenerator(provider),
-    validator: new ValidatorAgent('anthropic'), // Use Anthropic for validation
-    reportGenerator: new ReportGeneratorAgent('anthropic'), // Use Anthropic for reports
+    validator: new ValidatorAgent("anthropic"), // Use Anthropic for validation
+    reportGenerator: new ReportGeneratorAgent("anthropic"), // Use Anthropic for reports
   };
 }
 
@@ -425,14 +462,16 @@ export function createAgentSystem(provider: AIProvider = 'openai') {
 export function estimateProcessingTime(
   query: string,
   agentCount: number,
-  provider: AIProvider = 'openai'
+  provider: AIProvider = "openai"
 ): number {
   const baseTime = 5000; // 5 seconds base
   const queryComplexity = Math.min(query.length / 100, 5); // Max 5x multiplier
   const agentMultiplier = Math.log(agentCount + 1);
-  const providerMultiplier = provider === 'anthropic' ? 1.2 : 1.0;
-  
-  return Math.round(baseTime * queryComplexity * agentMultiplier * providerMultiplier);
+  const providerMultiplier = provider === "anthropic" ? 1.2 : 1.0;
+
+  return Math.round(
+    baseTime * queryComplexity * agentMultiplier * providerMultiplier
+  );
 }
 
 // Error handling utilities
@@ -444,15 +483,24 @@ export class AIAgentError extends Error {
     public originalError?: Error
   ) {
     super(message);
-    this.name = 'AIAgentError';
+    this.name = "AIAgentError";
   }
 }
 
-export function handleAIError(error: unknown, provider: AIProvider, agentType: string): AIAgentError {
+export function handleAIError(
+  error: unknown,
+  provider: AIProvider,
+  agentType: string
+): AIAgentError {
   if (error instanceof AIAgentError) {
     return error;
   }
-  
-  const message = error instanceof Error ? error.message : 'Unknown AI error';
-  return new AIAgentError(message, provider, agentType, error instanceof Error ? error : undefined);
+
+  const message = error instanceof Error ? error.message : "Unknown AI error";
+  return new AIAgentError(
+    message,
+    provider,
+    agentType,
+    error instanceof Error ? error : undefined
+  );
 }

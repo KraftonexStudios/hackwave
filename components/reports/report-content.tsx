@@ -23,17 +23,22 @@ export function ReportContent({ sessionId, reports }: ReportContentProps) {
   const [activeReports, setActiveReports] = useState(reports);
   const { toast } = useToast();
 
+  const mapReportType = (type: 'interim' | 'final' | 'summary'): 'INTERIM' | 'FINAL' | 'SUMMARY' => {
+    const mapping = { interim: 'INTERIM' as const, final: 'FINAL' as const, summary: 'SUMMARY' as const };
+    return mapping[type];
+  };
+
   const handleGenerateReport = async (reportType: 'interim' | 'final' | 'summary') => {
     setIsGenerating(true);
     try {
-      const result = await generateSessionReport(sessionId, reportType);
-      
+      const result = await generateSessionReport(sessionId, mapReportType(reportType));
+
       if (result.success && result.data) {
         toast({
           title: 'Report Generated',
           description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report has been generated successfully.`,
         });
-        
+
         // Refresh the page to show the new report
         window.location.reload();
       } else {
@@ -57,12 +62,12 @@ export function ReportContent({ sessionId, reports }: ReportContentProps) {
   const handleDownloadPDF = async (reportType: 'interim' | 'final' | 'summary') => {
     setIsGeneratingPDF(true);
     try {
-      const result = await generateSessionPDF(sessionId, reportType);
-      
+      const result = await generateSessionPDF(sessionId, mapReportType(reportType));
+
       if (result.success && result.data) {
         // Download the PDF
         await PDFReportGenerator.downloadPDF(result.data.blob, result.data.filename);
-        
+
         toast({
           title: 'PDF Downloaded',
           description: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report PDF has been downloaded.`,
@@ -86,9 +91,9 @@ export function ReportContent({ sessionId, reports }: ReportContentProps) {
   };
 
   const reportsByType = {
-    final: activeReports.filter(r => r.report_type === 'final'),
-    interim: activeReports.filter(r => r.report_type === 'interim'),
-    summary: activeReports.filter(r => r.report_type === 'summary'),
+    final: activeReports.filter(r => r.report_type === 'FINAL'),
+    interim: activeReports.filter(r => r.report_type === 'INTERIM'),
+    summary: activeReports.filter(r => r.report_type === 'SUMMARY'),
   };
 
   const renderReportSection = (reportType: 'final' | 'interim' | 'summary') => {
@@ -160,34 +165,34 @@ export function ReportContent({ sessionId, reports }: ReportContentProps) {
                   {latestReport.content}
                 </div>
               </div>
-              
-              {latestReport.metadata && (
+
+              {latestReport.recommendations && (
                 <div className="mt-4 pt-4 border-t">
-                  <h4 className="text-sm font-medium mb-2">Report Metadata</h4>
+                  <h4 className="text-sm font-medium mb-2">Report Recommendations</h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    {latestReport.metadata.agent_count && (
+                    {(latestReport.recommendations as any)?.agent_count && (
                       <div>
                         <span className="text-muted-foreground">Agents:</span>
-                        <span className="ml-1 font-medium">{latestReport.metadata.agent_count}</span>
+                        <span className="ml-1 font-medium">{(latestReport.recommendations as any).agent_count}</span>
                       </div>
                     )}
-                    {latestReport.metadata.round_count && (
+                    {(latestReport.recommendations as any)?.round_count && (
                       <div>
                         <span className="text-muted-foreground">Rounds:</span>
-                        <span className="ml-1 font-medium">{latestReport.metadata.round_count}</span>
+                        <span className="ml-1 font-medium">{(latestReport.recommendations as any).round_count}</span>
                       </div>
                     )}
-                    {latestReport.metadata.usage?.totalTokens && (
+                    {(latestReport.recommendations as any)?.usage?.totalTokens && (
                       <div>
                         <span className="text-muted-foreground">Tokens:</span>
-                        <span className="ml-1 font-medium">{latestReport.metadata.usage.totalTokens}</span>
+                        <span className="ml-1 font-medium">{(latestReport.recommendations as any).usage.totalTokens}</span>
                       </div>
                     )}
-                    {latestReport.metadata.generated_at && (
+                    {(latestReport.recommendations as any)?.generated_at && (
                       <div>
                         <span className="text-muted-foreground">Generated:</span>
                         <span className="ml-1 font-medium">
-                          {new Date(latestReport.metadata.generated_at).toLocaleDateString()}
+                          {new Date((latestReport.recommendations as any).generated_at).toLocaleDateString()}
                         </span>
                       </div>
                     )}
