@@ -161,7 +161,7 @@ async function AgentsContent() {
   return (
     <div className="space-y-6">
       {/* Subscription Status Card */}
-      <Card className={`border-2 ${subscription?.isPremium ? 'border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50' : isNearLimit ? 'border-orange-200 bg-orange-50' : 'border-gray-200'}`}>
+      <Card className={`border-2 ${subscription?.isPremium ? 'border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50' : isNearLimit ? 'border-zink-200 bg-background' : 'border-gray-200'}`}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">

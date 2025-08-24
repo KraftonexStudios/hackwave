@@ -28,7 +28,7 @@ export function DashboardNav() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 hover:opacity-90 opacity-50">
       <Dock className="items-end pb-3">
         {navigation.map((item, idx) => {
           const isActive = pathname.startsWith(item.href);

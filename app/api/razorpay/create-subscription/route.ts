@@ -12,17 +12,28 @@ export async function POST(request: NextRequest) {
 
     // Validate credentials
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return NextResponse.json({ error: "Razorpay credentials not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Razorpay credentials not configured" },
+        { status: 500 }
+      );
     }
 
     // Get request body
     const { planId, interval, amount, userId } = await request.json();
 
-    console.log('Creating subscription with request data:', { planId, interval, amount, userId });
+    console.log("Creating subscription with request data:", {
+      planId,
+      interval,
+      amount,
+      userId,
+    });
 
     // Validate request
     if (!planId || !interval || !amount || !userId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
     // Create a Razorpay subscription plan
@@ -71,7 +82,10 @@ export async function POST(request: NextRequest) {
     const { data: authData, error: authError } = await supabase.auth.getUser();
 
     if (authError || !authData.user) {
-      return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+      return NextResponse.json(
+        { error: "User not authenticated" },
+        { status: 401 }
+      );
     }
 
     const userEmail = authData.user.email;
@@ -97,75 +111,41 @@ export async function POST(request: NextRequest) {
 
       if (insertUserError) {
         console.error("Failed to insert user:", insertUserError);
-        return NextResponse.json({ error: "Failed to create user record" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to create user record" },
+          { status: 500 }
+        );
       }
 
       userRecord = insertedUser;
     }
 
     if (!userRecord) {
-      return NextResponse.json({ error: "User record not found" }, { status: 500 });
+      return NextResponse.json(
+        { error: "User record not found" },
+        { status: 500 }
+      );
     }
 
     // ✅ Use userRecord.id for foreign key
 
-    // Check if user already has a subscription using the correct user_id
-    const { data: existingSubscription, error: fetchError } = await supabase
-      .from("user_subscriptions")
-      .select("*")
-      .eq("user_id", userRecord.id) // Use userRecord.id instead of userId
-      .single();
+    // Don't create subscription record yet - wait for payment verification
+    // Just store the Razorpay subscription ID for later verification
 
-    if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116 = no rows returned
-      console.error("Error checking existing subscription:", fetchError);
-      return NextResponse.json({ error: "Failed to check existing subscription" }, { status: 500 });
-    }
-
-    let dbResult;
-    let subscriptionRecord;
-
-    if (existingSubscription) {
-      // Update existing subscription - but keep it as PENDING until payment verification
-      dbResult = await supabase
-        .from("user_subscriptions")
-        .update({
-          plan: "FREE", // Keep as FREE until payment is verified
-          status: "ACTIVE",
-          expires_at: getExpirationDate(interval).toISOString(),
-          razorpay_payment_id: subscription.id, // Store Razorpay subscription ID here
-        })
-        .eq("user_id", userRecord.id)
-        .select("*")
-        .single();
-      subscriptionRecord = dbResult.data;
-    } else {
-      // Create new subscription - but keep it as FREE until payment verification
-      dbResult = await supabase.from("user_subscriptions").insert({
-        user_id: userRecord.id,
-        plan: "FREE", // Keep as FREE until payment is verified
-        status: "ACTIVE",
-        expires_at: getExpirationDate(interval).toISOString(),
-        razorpay_payment_id: subscription.id, // Store Razorpay subscription ID here
-      })
-      .select("*")
-      .single();
-      subscriptionRecord = dbResult.data;
-    }
-
-    if (dbResult.error) {
-      console.error("Supabase error:", dbResult.error);
-      return NextResponse.json({ error: "Failed to store subscription" }, { status: 500 });
-    }
-
-    console.log('Subscription created successfully:', {
-      dbSubscriptionId: subscriptionRecord?.id,
-      razorpaySubscriptionId: subscription.id,
+    console.log("💳 Subscription creation - storing for verification:", {
       userId: userRecord.id,
-      plan: 'FREE (pending payment verification)'
+      razorpaySubscriptionId: subscription.id,
+      planType: "PREMIUM",
+      interval: interval,
     });
 
-    // Return the subscription details with database subscription ID
+    console.log("✅ Subscription prepared for verification:", {
+      razorpaySubscriptionId: subscription.id,
+      userId: userRecord.id,
+      plan: "FREE (pending payment verification)",
+    });
+
+    // Return the subscription details
     return NextResponse.json({
       success: true,
       razorpaySubscription: {
@@ -174,8 +154,9 @@ export async function POST(request: NextRequest) {
         amount: amount * 100, // in paise
         currency: "INR",
         status: subscription.status,
-        dbSubscriptionId: subscriptionRecord?.id, // Include database subscription ID for verification
+        userId: userRecord.id, // Send userId for verification
       },
+      key: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error: any) {
     console.error("Razorpay subscription error:", error);

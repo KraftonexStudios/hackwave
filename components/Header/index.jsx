@@ -28,6 +28,13 @@ export default function Index() {
     }
   }, [isActive]);
 
+  // Only show header on homepage ('/'), not on dashboard pages
+  const isHomepage = pathname === '/';
+
+  if (!isHomepage) {
+    return null;
+  }
+
   return (
     <>
       <div ref={header} className={styles.header}>

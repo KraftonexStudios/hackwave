@@ -95,7 +95,7 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_subscription_id: response.razorpay_subscription_id,
                 razorpay_signature: response.razorpay_signature,
-                subscription_id: data.razorpaySubscription.dbSubscriptionId, // Use database subscription ID
+                subscription_id: data.razorpaySubscription.userId, // Use database userId from create-subscription response
               }),
             });
 

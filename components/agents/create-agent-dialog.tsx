@@ -259,9 +259,9 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
                   <div className="flex items-center gap-2 text-sm text-amber-800">
                     <Crown className="h-4 w-4" />
                     <span>
-                      You're using {agentCount} of {agentLimit} free agents. 
-                      <button 
-                        onClick={() => router.push('/checkout')} 
+                      You're using {agentCount} of {agentLimit} free agents.
+                      <button
+                        onClick={() => router.push('/checkout')}
                         className="underline font-medium hover:text-amber-900"
                       >
                         Upgrade to Pro

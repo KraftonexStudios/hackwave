@@ -90,7 +90,7 @@ export async function createAgent(
     // Check subscription limits before creating agent
     const subscription = await getUserSubscription(userId);
     const canCreate = await canCreateAgent(userId);
-    
+
     if (!canCreate.canCreate) {
       // If user is on free plan and has reached limit, return error with redirect flag
       if (!subscription?.isPremium && canCreate.currentCount >= 4) {
@@ -100,7 +100,7 @@ export async function createAgent(
           data: { shouldRedirect: true, redirectUrl: "/checkout" },
         };
       }
-      
+
       return {
         success: false,
         error: "Cannot create more agents. Please check your subscription.",

@@ -223,7 +223,7 @@ async function SessionContent({ sessionId }: { sessionId: string }) {
 
 export default async function SessionPage({ params }: SessionPageProps) {
   const { id } = await params;
-  
+
   return (
     <Suspense fallback={<SessionDetailSkeleton />}>
       <SessionContent sessionId={id} />

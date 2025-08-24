@@ -32,7 +32,7 @@ CREATE POLICY "Service role can manage all subscriptions"
 ALTER TABLE users 
   ADD COLUMN IF NOT EXISTS subscription_plan TEXT,
   ADD COLUMN IF NOT EXISTS subscription_status TEXT,
-  ADD COLUMN IF NOT EXISTS subscription_id UUID REFERENCES user_subscriptions(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS subscription_id TEXT REFERENCES user_subscriptions(id) ON DELETE SET NULL;
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user_id ON user_subscriptions(user_id);

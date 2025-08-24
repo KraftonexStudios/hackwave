@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Send, Users, Settings, Layout, X } from 'lucide-react';
+import { Send, Users, Settings, Layout, X, ChevronRight } from 'lucide-react';
 import { getActiveAgents } from '@/actions/agents';
 import type { Agent } from '@/database.types';
 import { useToast } from '@/hooks/use-toast';
@@ -1469,10 +1469,23 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
 
       {/* Node Content Sidebar */}
       {showNodeSidebar && selectedNode && (
-        <div className="fixed top-0 right-0 h-full w-96 bg-background shadow-xl border-l border-border z-[100000] overflow-hidden flex flex-col">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50">
-            <div className="flex items-center gap-2">
+        <div className="fixed top-0 right-0 h-full w-96 bg-background shadow-xl border-l border-border z-[100000] overflow-hidden flex">
+          {/* Close Button - Centered on Left Edge */}
+          <div className="flex items-center justify-center w-8 bg-muted/30 border-r border-border">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowNodeSidebar(false)}
+              className="h-10 w-6 rounded-md hover:bg-muted/50 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Sidebar Content Container */}
+          <div className="flex-1 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="flex items-center gap-2 p-4 border-b border-border bg-muted/50">
               <div className={`w-3 h-3 rounded-full ${selectedNode.type === 'agent' ? 'bg-blue-500' :
                 selectedNode.type === 'debate' ? 'bg-green-500' :
                   selectedNode.type === 'question' ? 'bg-yellow-500' :
@@ -1484,303 +1497,354 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                 {selectedNode.type} Node
               </h3>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowNodeSidebar(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
 
-          {/* Sidebar Content */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              {/* Node ID */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Node ID</label>
-                <div className="mt-1 p-2 bg-muted rounded text-sm font-mono text-foreground">
-                  {selectedNode.id}
+            {/* Sidebar Content */}
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {/* Node ID */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Node ID</label>
+                  <div className="mt-1 p-2 bg-muted rounded text-sm font-mono text-foreground">
+                    {selectedNode.id}
+                  </div>
                 </div>
-              </div>
 
-              {/* Node Type */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Type</label>
-                <div className="mt-1 p-2 bg-muted rounded text-sm text-foreground capitalize">
-                  {selectedNode.type}
+                {/* Node Type */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Type</label>
+                  <div className="mt-1 p-2 bg-muted rounded text-sm text-foreground capitalize">
+                    {selectedNode.type}
+                  </div>
                 </div>
-              </div>
 
-              {/* Node Position */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Position</label>
-                <div className="mt-1 p-2 bg-muted rounded text-sm text-foreground">
-                  X: {Math.round(selectedNode.position.x)}, Y: {Math.round(selectedNode.position.y)}
+                {/* Node Position */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Position</label>
+                  <div className="mt-1 p-2 bg-muted rounded text-sm text-foreground">
+                    X: {Math.round(selectedNode.position.x)}, Y: {Math.round(selectedNode.position.y)}
+                  </div>
                 </div>
-              </div>
 
-              {/* Node Content */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Content</label>
-                <div className="mt-1 p-3 bg-muted/50 rounded text-sm text-foreground max-h-96 overflow-auto">
-                  {selectedNode.type === 'response' && selectedNode.data?.response ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="whitespace-pre-wrap">{selectedNode.data.response}</div>
-                    </div>
-                  ) : selectedNode.type === 'question' && selectedNode.data?.question ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="font-medium text-blue-600 dark:text-blue-400">{selectedNode.data.question}</div>
-                      {selectedNode.data.status && (
-                        <div className="mt-2 text-xs text-muted-foreground">Status: {selectedNode.data.status}</div>
-                      )}
-                    </div>
-                  ) : selectedNode.type === 'agent' && selectedNode.data?.name ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="font-medium text-green-600 dark:text-green-400">{selectedNode.data.name}</div>
-                      {selectedNode.data.role && (
-                        <div className="text-sm text-muted-foreground mt-1">Role: {selectedNode.data.role}</div>
-                      )}
-                      {selectedNode.data.topic && (
-                        <div className="text-sm text-muted-foreground mt-1">Topic: {selectedNode.data.topic}</div>
-                      )}
-                      {selectedNode.data.status && (
-                        <div className="text-xs text-muted-foreground mt-2">Status: {selectedNode.data.status}</div>
-                      )}
-                    </div>
-                  ) : selectedNode.type === 'debate' && selectedNode.data?.topic ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="font-medium text-purple-600 dark:text-purple-400">{selectedNode.data.topic}</div>
-                      {selectedNode.data.participants && (
-                        <div className="text-sm text-muted-foreground mt-1">Participants: {selectedNode.data.participants}</div>
-                      )}
-                      {selectedNode.data.rounds !== undefined && (
-                        <div className="text-sm text-muted-foreground mt-1">Rounds: {selectedNode.data.rounds}</div>
-                      )}
-                      {selectedNode.data.status && (
-                        <div className="text-xs text-muted-foreground mt-2">Status: {selectedNode.data.status}</div>
-                      )}
-                    </div>
-                  ) : selectedNode.type === 'validatorTable' ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="font-medium text-red-600 dark:text-red-400">Validator Analysis</div>
-                      {selectedNode.data?.validationResults && (
-                        <div className="mt-2">
-                          <div className="text-sm font-medium text-muted-foreground">Validation Results:</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {Array.isArray(selectedNode.data.validationResults)
-                              ? `${selectedNode.data.validationResults.length} results`
-                              : 'Processing...'}
+                {/* Node Content */}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Content</label>
+                  <div className="mt-1 p-3 bg-muted/50 rounded text-sm text-foreground max-h-96 overflow-auto">
+                    {selectedNode.type === 'response' && selectedNode.data?.response ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="whitespace-pre-wrap">{selectedNode.data.response}</div>
+                      </div>
+                    ) : selectedNode.type === 'question' && selectedNode.data?.question ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="font-medium text-blue-600 dark:text-blue-400">{selectedNode.data.question}</div>
+                        {selectedNode.data.status && (
+                          <div className="mt-2 text-xs text-muted-foreground">Status: {selectedNode.data.status}</div>
+                        )}
+                      </div>
+                    ) : selectedNode.type === 'agent' && selectedNode.data?.name ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="font-medium text-green-600 dark:text-green-400">{selectedNode.data.name}</div>
+                        {selectedNode.data.role && (
+                          <div className="text-sm text-muted-foreground mt-1">Role: {selectedNode.data.role}</div>
+                        )}
+                        {selectedNode.data.topic && (
+                          <div className="text-sm text-muted-foreground mt-1">Topic: {selectedNode.data.topic}</div>
+                        )}
+                        {selectedNode.data.status && (
+                          <div className="text-xs text-muted-foreground mt-2">Status: {selectedNode.data.status}</div>
+                        )}
+                      </div>
+                    ) : selectedNode.type === 'debate' && selectedNode.data?.topic ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="font-medium text-purple-600 dark:text-purple-400">{selectedNode.data.topic}</div>
+                        {selectedNode.data.participants && (
+                          <div className="text-sm text-muted-foreground mt-1">Participants: {selectedNode.data.participants}</div>
+                        )}
+                        {selectedNode.data.rounds !== undefined && (
+                          <div className="text-sm text-muted-foreground mt-1">Rounds: {selectedNode.data.rounds}</div>
+                        )}
+                        {selectedNode.data.status && (
+                          <div className="text-xs text-muted-foreground mt-2">Status: {selectedNode.data.status}</div>
+                        )}
+                      </div>
+                    ) : selectedNode.type === 'validatorTable' ? (
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="font-medium text-red-600 dark:text-red-400">Validator Analysis</div>
+                        {selectedNode.data?.validationResults && (
+                          <div className="mt-2">
+                            <div className="text-sm font-medium text-muted-foreground">Validation Results:</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {Array.isArray(selectedNode.data.validationResults)
+                                ? `${selectedNode.data.validationResults.length} results`
+                                : 'Processing...'}
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {selectedNode.data?.totalPoints !== undefined && (
-                        <div className="text-sm text-muted-foreground mt-1">Total Points: {selectedNode.data.totalPoints}</div>
-                      )}
-                      {selectedNode.data?.keptPoints !== undefined && (
-                        <div className="text-sm text-muted-foreground mt-1">Kept Points: {selectedNode.data.keptPoints}</div>
-                      )}
+                        )}
+                        {selectedNode.data?.totalPoints !== undefined && (
+                          <div className="text-sm text-muted-foreground mt-1">Total Points: {selectedNode.data.totalPoints}</div>
+                        )}
+                        {selectedNode.data?.keptPoints !== undefined && (
+                          <div className="text-sm text-muted-foreground mt-1">Kept Points: {selectedNode.data.keptPoints}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground italic">No readable content available</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Raw Data (Collapsible) */}
+                <div>
+                  <details className="group">
+                    <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground">
+                      Raw Data (Click to expand)
+                    </summary>
+                    <div className="mt-2 p-3 bg-muted rounded text-sm text-foreground max-h-64 overflow-auto">
+                      <pre className="whitespace-pre-wrap font-mono text-xs">
+                        {JSON.stringify(selectedNode.data, null, 2)}
+                      </pre>
                     </div>
-                  ) : (
-                    <div className="text-muted-foreground italic">No readable content available</div>
-                  )}
+                  </details>
                 </div>
+
+                {/* Node Style (if exists) */}
+                {selectedNode.style && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Style</label>
+                    <div className="mt-1 p-3 bg-gray-100 rounded text-sm text-gray-800">
+                      <pre className="whitespace-pre-wrap font-mono text-xs">
+                        {JSON.stringify(selectedNode.style, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Properties */}
+                {Object.keys(selectedNode).filter(key => !['id', 'type', 'position', 'data', 'style'].includes(key)).length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Additional Properties</label>
+                    <div className="mt-1 p-3 bg-gray-100 rounded text-sm text-gray-800">
+                      <pre className="whitespace-pre-wrap font-mono text-xs">
+                        {JSON.stringify(
+                          Object.fromEntries(
+                            Object.entries(selectedNode).filter(([key]) =>
+                              !['id', 'type', 'position', 'data', 'style'].includes(key)
+                            )
+                          ),
+                          null,
+                          2
+                        )}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {/* Raw Data (Collapsible) */}
-              <div>
-                <details className="group">
-                  <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground">
-                    Raw Data (Click to expand)
-                  </summary>
-                  <div className="mt-2 p-3 bg-muted rounded text-sm text-foreground max-h-64 overflow-auto">
-                    <pre className="whitespace-pre-wrap font-mono text-xs">
-                      {JSON.stringify(selectedNode.data, null, 2)}
-                    </pre>
-                  </div>
-                </details>
-              </div>
-
-              {/* Node Style (if exists) */}
-              {selectedNode.style && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Style</label>
-                  <div className="mt-1 p-3 bg-gray-100 rounded text-sm text-gray-800">
-                    <pre className="whitespace-pre-wrap font-mono text-xs">
-                      {JSON.stringify(selectedNode.style, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Properties */}
-              {Object.keys(selectedNode).filter(key => !['id', 'type', 'position', 'data', 'style'].includes(key)).length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Additional Properties</label>
-                  <div className="mt-1 p-3 bg-gray-100 rounded text-sm text-gray-800">
-                    <pre className="whitespace-pre-wrap font-mono text-xs">
-                      {JSON.stringify(
-                        Object.fromEntries(
-                          Object.entries(selectedNode).filter(([key]) =>
-                            !['id', 'type', 'position', 'data', 'style'].includes(key)
-                          )
-                        ),
-                        null,
-                        2
-                      )}
-                    </pre>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+            </ScrollArea>
+          </div>
         </div>
       )}
 
       {/* Input Area - Fixed at bottom */}
-      <div className="shrink-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border">
-        <form onSubmit={handleSubmit} className="flex gap-2 max-w-none">
-          {/* Layout Selector */}
-          <div className="flex gap-1 shrink-0">
-            {[
-              { key: 'TB', label: '↓', tooltip: 'Top to Bottom' },
-              { key: 'BT', label: '↑', tooltip: 'Bottom to Top' },
-              { key: 'LR', label: '→', tooltip: 'Left to Right' },
-              { key: 'RL', label: '←', tooltip: 'Right to Left' }
-            ].map(({ key, label, tooltip }) => (
-              <Button
-                key={key}
-                variant={layoutDirection === key ? 'default' : 'outline'}
-                size="icon"
-                className="w-8 h-8 text-xs"
-                onClick={() => setLayoutDirection(key as 'TB' | 'BT' | 'LR' | 'RL')}
-                title={tooltip}
-                type="button"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
+      <div className="shrink-0 p-4 bg-background/95 ">
+        <div className="mx-auto max-w-7xl h-20">
+          <form onSubmit={handleSubmit} className="relative">
+            <div className="relative flex items-center bg-black/90 backdrop-blur-sm border-2 border-border rounded-full shadow-sm hover:shadow-md transition-shadow duration-200">
+              {/* Left side buttons */}
+              <div className="flex items-center pl-3 pr-2 border-r border-border/50">
+                {/* Layout Selector Dropdown */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground">
+                      <Layout className="h-4 w-4" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-auto">
+                    <SheetHeader>
+                      <SheetTitle>Layout Direction</SheetTitle>
+                      <SheetDescription>
+                        Choose how the flow nodes are arranged
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="flex gap-2 mt-4 pb-4">
+                      {[
+                        { key: 'TB', label: '↓', tooltip: 'Top to Bottom' },
+                        { key: 'BT', label: '↑', tooltip: 'Bottom to Top' },
+                        { key: 'LR', label: '→', tooltip: 'Left to Right' },
+                        { key: 'RL', label: '←', tooltip: 'Right to Left' }
+                      ].map(({ key, label, tooltip }) => (
+                        <Button
+                          key={key}
+                          variant={layoutDirection === key ? 'default' : 'outline'}
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setLayoutDirection(key as 'TB' | 'BT' | 'LR' | 'RL')}
+                          title={tooltip}
+                          type="button"
+                        >
+                          <span className="mr-2">{label}</span>
+                          {tooltip}
+                        </Button>
+                      ))}
+                    </div>
+                  </SheetContent>
+                </Sheet>
 
-          <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Users className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80 z-[99998]">
-              <SheetHeader>
-                <SheetTitle>Select Agents</SheetTitle>
-                <SheetDescription>
-                  Choose agents to participate in the debate flow.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="mt-6">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Selected: {selectedAgents.length}</span>
-                    {selectedAgents.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedAgents([])}
-                      >
-                        Clear All
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {selectedAgents.map(agentId => {
-                      const agent = agents.find(a => a.id === agentId) || availableAgents.find(a => a.id === agentId);
-                      return agent ? (
-                        <Badge key={agentId} variant="secondary" className="text-xs">
-                          {agent.name}
-                        </Badge>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-                <ScrollArea className="h-[calc(100vh-300px)]">
-                  <div className="space-y-2 pr-4">
-                    {isLoadingAgents ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
-                        Loading agents...
-                      </div>
-                    ) : availableAgents.length === 0 ? (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
-                        No agents available
-                      </div>
-                    ) : (
-                      availableAgents.map(agent => (
-                        <Card key={agent.id} className="p-3">
-                          <div className="flex items-start space-x-3">
-                            <Checkbox
-                              id={agent.id}
-                              checked={selectedAgents.includes(agent.id)}
-                              onCheckedChange={() => toggleAgent(agent.id)}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <label
-                                htmlFor={agent.id}
-                                className="text-sm font-medium cursor-pointer"
-                              >
+                {/* Agents Selector */}
+                <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground relative">
+                      <Users className="h-4 w-4" />
+                      {selectedAgents.length > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                          {selectedAgents.length}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 z-[99998]">
+                    <SheetHeader>
+                      <SheetTitle>Select Agents</SheetTitle>
+                      <SheetDescription>
+                        Choose agents to participate in the debate flow.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Selected: {selectedAgents.length}</span>
+                          {selectedAgents.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedAgents([])}
+                            >
+                              Clear All
+                            </Button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {selectedAgents.map(agentId => {
+                            const agent = agents.find(a => a.id === agentId) || availableAgents.find(a => a.id === agentId);
+                            return agent ? (
+                              <Badge key={agentId} variant="secondary" className="text-xs">
                                 {agent.name}
-                              </label>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {agent.description}
-                              </p>
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className={`text-xs px-2 py-1 rounded-full ${agent.is_active
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                  {agent.is_active ? 'Active' : 'Inactive'}
-                                </span>
-                              </div>
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                      <ScrollArea className="h-[calc(100vh-300px)]">
+                        <div className="space-y-2 pr-4">
+                          {isLoadingAgents ? (
+                            <div className="text-center py-4 text-sm text-muted-foreground">
+                              Loading agents...
                             </div>
-                          </div>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+                          ) : availableAgents.length === 0 ? (
+                            <div className="text-center py-4 text-sm text-muted-foreground">
+                              No agents available
+                            </div>
+                          ) : (
+                            availableAgents.map(agent => (
+                              <Card key={agent.id} className="p-3">
+                                <div className="flex items-start space-x-3">
+                                  <Checkbox
+                                    id={agent.id}
+                                    checked={selectedAgents.includes(agent.id)}
+                                    onCheckedChange={() => toggleAgent(agent.id)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <label
+                                      htmlFor={agent.id}
+                                      className="text-sm font-medium cursor-pointer"
+                                    >
+                                      {agent.name}
+                                    </label>
+                                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                      {agent.description}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-2">
+                                      <span className={`text-xs px-2 py-1 rounded-full ${agent.is_active
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                        }`}>
+                                        {agent.is_active ? 'Active' : 'Inactive'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
-            </SheetContent>
-          </Sheet>
 
-          <div className="flex-1 relative min-w-0">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Enter debate topic, question, or argument..."
-              disabled={isProcessing}
-              className="w-full pr-12 bg-white/90 backdrop-blur-sm border-2"
-            />
-            {isProcessing && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+              {/* Input field */}
+              <div className="flex-1 relative">
+                <Input
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Enter debate topic, question, or argument..."
+                  disabled={isProcessing}
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 py-3 text-base placeholder:text-muted-foreground/60"
+                />
+                {isProcessing && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right side buttons */}
+              <div className="flex items-center pr-3 pl-2 border-l border-border/50">
+                {/* Context Management Button */}
+                {validationResults.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleValidationComplete(validationResults)}
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0}
+                  size="sm"
+                  className="h-8   rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Selected agents indicator */}
+            {selectedAgents.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedAgents.slice(0, 3).map(agentId => {
+                  const agent = agents.find(a => a.id === agentId) || availableAgents.find(a => a.id === agentId);
+                  return agent ? (
+                    <Badge key={agentId} variant="secondary" className="text-xs px-2 py-1">
+                      {agent.name}
+                    </Badge>
+                  ) : null;
+                })}
+                {selectedAgents.length > 3 && (
+                  <Badge variant="secondary" className="text-xs px-2 py-1">
+                    +{selectedAgents.length - 3} more
+                  </Badge>
+                )}
               </div>
             )}
-          </div>
-
-          <Button type="submit" disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0} className="shrink-0">
-            <Send className="h-4 w-4" />
-          </Button>
-
-          {/* Context Management Button */}
-          {validationResults.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleValidationComplete(validationResults)}
-              className="shrink-0"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          )}
-        </form>
+          </form>
+        </div>
       </div>
 
       {/* Flow Orchestrator Modal */}
