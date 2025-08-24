@@ -194,11 +194,11 @@ ${previousResponses.map((r) => `${r.agentName}: ${r.response}`).join("\n\n")}`
         prompt: query,
         providerOptions: {
           groq: {
-            reasoningFormat: 'parsed',
-            reasoningEffort: 'default',
+            reasoningFormat: "parsed",
+            reasoningEffort: "default",
             parallelToolCalls: true,
-            serviceTier: 'flex'
-          }
+            serviceTier: "flex",
+          },
         },
         temperature: this.config.temperature,
       });
@@ -246,11 +246,11 @@ ${previousResponses.map((r) => `${r.agentName}: ${r.response}`).join("\n\n")}`
         prompt: query,
         providerOptions: {
           groq: {
-            reasoningFormat: 'parsed',
-            reasoningEffort: 'default',
+            reasoningFormat: "parsed",
+            reasoningEffort: "default",
             parallelToolCalls: true,
-            serviceTier: 'flex'
-          }
+            serviceTier: "flex",
+          },
         },
         temperature: this.config.temperature,
       });

@@ -39,7 +39,7 @@ export function DebateNode({ data }: { data: DebateNodeData }) {
   const progress = data.progress || (data.status === 'ACTIVE' ? 65 : data.status === 'COMPLETED' ? 100 : 0);
 
   return (
-    <div className="min-w-[280px]">
+    <div className="w-[220px]">
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
 
       <Card className="border-2 shadow-lg" style={{ borderColor: statusColors[data.status as keyof typeof statusColors] || '#6b7280' }}>

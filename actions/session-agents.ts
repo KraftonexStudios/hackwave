@@ -439,7 +439,9 @@ export async function toggleSessionAgentStatus(
     return {
       success: true,
       data: updatedSessionAgent,
-      message: `Agent ${sessionAgent.is_active ? 'deactivated' : 'activated'} successfully`,
+      message: `Agent ${
+        sessionAgent.is_active ? "deactivated" : "activated"
+      } successfully`,
     };
   } catch (error) {
     console.error("Unexpected error toggling session agent status:", error);
@@ -521,7 +523,7 @@ export async function assignAgentsToSession(
     }
 
     // Add new assignments
-    const sessionAgents = agentIds.map(agentId => ({
+    const sessionAgents = agentIds.map((agentId) => ({
       session_id: sessionId,
       agent_id: agentId,
       role: "PARTICIPANT" as const,

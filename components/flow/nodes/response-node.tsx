@@ -11,10 +11,12 @@ import { MessageSquare, ThumbsUp, ThumbsDown, Minus, Clock } from 'lucide-react'
 interface ResponseNodeData {
   agent: string;
   response: string;
+  points?: string[];
   sentiment: 'positive' | 'negative' | 'neutral';
   timestamp: string;
   confidence?: number;
   wordCount?: number;
+  isStreaming?: boolean;
 }
 
 const sentimentConfig = {
@@ -55,8 +57,16 @@ export function ResponseNode({ data }: { data: ResponseNodeData }) {
   const wordCount = data.wordCount || data.response.split(' ').length;
   const confidence = data.confidence || Math.floor(Math.random() * 30) + 70; // Mock confidence
 
+  // Use streamed points if available, otherwise fallback to parsing response
+  const responsePoints = data.points || (
+    data.response
+      .split(/[.!?]\s+/)
+      .filter(point => point.trim().length > 10)
+      .slice(0, 3)
+  );
+
   return (
-    <div className="min-w-[280px] max-w-[320px]">
+    <div className="w-[600px]">
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
 
       <Card className="border-2 shadow-lg" style={{ borderColor: config.color }}>
@@ -70,6 +80,13 @@ export function ResponseNode({ data }: { data: ResponseNodeData }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-sm truncate">{data.agent}</h3>
+                {data.isStreaming && (
+                  <div className="flex items-center space-x-1">
+                    <div className="animate-pulse w-1 h-1 bg-blue-500 rounded-full"></div>
+                    <div className="animate-pulse w-1 h-1 bg-blue-500 rounded-full" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="animate-pulse w-1 h-1 bg-blue-500 rounded-full" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+                )}
                 <Badge
                   variant="outline"
                   className="text-xs px-1.5 py-0.5 flex items-center gap-1"
@@ -87,47 +104,41 @@ export function ResponseNode({ data }: { data: ResponseNodeData }) {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 space-y-3">
-          {/* Response Text */}
+        <CardContent className="pt-0 space-y-2">
+          {/* Response Points with streaming animation */}
           <div
-            className="p-3 rounded-lg text-sm leading-relaxed"
+            className="p-2 rounded-lg text-xs"
             style={{ backgroundColor: config.bgColor }}
           >
-            <p className="text-foreground line-clamp-4">{data.response}</p>
+            {responsePoints.length > 0 ? (
+              <ul className="space-y-1 text-foreground">
+                {responsePoints.map((point, index) => (
+                  <li
+                    key={index}
+                    className={`flex items-start gap-1 transition-opacity duration-500 ${data.isStreaming ? 'animate-fade-in' : ''
+                      }`}
+                    style={{ animationDelay: `${index * 0.3}s` }}
+                  >
+                    <span className="text-xs mt-0.5" style={{ color: config.color }}>•</span>
+                    <span className="text-xs leading-tight">{point.trim()}</span>
+                  </li>
+                ))}
+                {data.isStreaming && (
+                  <li className="flex items-start gap-1 text-gray-400 animate-pulse">
+                    <span className="inline-block w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                    <span className="text-xs leading-tight ml-1">Generating more content...</span>
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <div className="flex items-center space-x-2 text-gray-400">
+                <div className="animate-spin w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full"></div>
+                <span className="text-xs">Generating response...</span>
+              </div>
+            )}
           </div>
 
-          {/* Metrics */}
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Words:</span>
-              <span className="font-medium">{wordCount}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Confidence:</span>
-              <span className="font-medium">{confidence}%</span>
-            </div>
-          </div>
 
-          {/* Confidence Bar */}
-          <div className="space-y-1">
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-              <div
-                className="h-1.5 rounded-full transition-all duration-300"
-                style={{
-                  width: `${confidence}%`,
-                  backgroundColor: config.color
-                }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Sentiment Indicator */}
-          <div className="flex items-center gap-2 p-2 rounded-md" style={{ backgroundColor: config.bgColor }}>
-            <MessageSquare className="h-3 w-3" style={{ color: config.color }} />
-            <span className="text-xs font-medium" style={{ color: config.color }}>
-              {data.sentiment.charAt(0).toUpperCase() + data.sentiment.slice(1)} Response
-            </span>
-          </div>
         </CardContent>
       </Card>
 

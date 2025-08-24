@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
       authError = error;
     } catch (cookieError) {
       // If cookie auth fails, try Bearer token
-      const authHeader = request.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
+      const authHeader = request.headers.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
         const token = authHeader.substring(7);
         const { data, error } = await supabase.auth.getUser(token);
         user = data.user;
@@ -155,10 +155,16 @@ async function generateAgentResponse(
     role: agent.role,
     name: agent.name,
     systemPrompt: agent.system_prompt || "",
+    id: agent.id,
   };
 
   try {
-    return await unifiedAIClient.generateAgentResponse(agentConfig, query, context, AI_PROVIDER);
+    return await unifiedAIClient.generateAgentResponse(
+      agentConfig,
+      query,
+      context,
+      AI_PROVIDER
+    );
   } catch (error) {
     console.error(`Error generating response for ${agent.name}:`, error);
 
@@ -233,7 +239,11 @@ async function validateResponses(
       evidence: (r as any).evidence || [],
     }));
 
-    return await unifiedAIClient.validateResponses(aiResponses, query, AI_PROVIDER);
+    return await unifiedAIClient.validateResponses(
+      aiResponses,
+      query,
+      AI_PROVIDER
+    );
   } catch (error) {
     console.error("Error in AI validation:", error);
 

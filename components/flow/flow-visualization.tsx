@@ -11,8 +11,10 @@ import {
   Edge,
   Node,
   BackgroundVariant,
+  ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import dagre from 'dagre';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Send, Users, Settings } from 'lucide-react';
+import { Send, Users, Settings, Layout } from 'lucide-react';
 import { getActiveAgents } from '@/actions/agents';
 import type { Agent } from '@/database.types';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +30,11 @@ import { AgentNode } from './nodes/agent-node';
 import { DebateNode } from './nodes/debate-node';
 import { QuestionNode } from './nodes/question-node';
 import { ResponseNode } from './nodes/response-node';
+import { ValidatorTableNode } from './nodes/validator-table-node';
+
+import { FlowOrchestrator } from './flow-orchestrator';
+import { contextManager, FlowRestartConfig } from '@/lib/context-manager';
+import { UserInteractionFormData } from './user-interaction-form';
 import { createClient } from '@/lib/supabase/client';
 
 interface FlowVisualizationProps {
@@ -40,6 +47,7 @@ const nodeTypes = {
   debate: DebateNode,
   question: QuestionNode,
   response: ResponseNode,
+  validatorTable: ValidatorTableNode,
 };
 
 const initialNodes: Node[] = [
@@ -63,17 +71,22 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [debateHistory, setDebateHistory] = useState<string[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(sessionId || null);
   const [validationResults, setValidationResults] = useState<any[]>([]);
+  const [validationData, setValidationData] = useState<any[]>([]);
   const [processingData, setProcessingData] = useState<any>(null);
-  const [showValidationTable, setShowValidationTable] = useState(false);
+
   const [currentRound, setCurrentRound] = useState(1);
   const [maxRounds] = useState(5);
   const [availableAgents, setAvailableAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>(agents.map(agent => agent.id));
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [showAgentPanel, setShowAgentPanel] = useState(false);
+  const [layoutDirection, setLayoutDirection] = useState<'TB' | 'BT' | 'LR' | 'RL'>('TB');
+  const [showFlowOrchestrator, setShowFlowOrchestrator] = useState(false);
+  const [orchestratorData, setOrchestratorData] = useState<UserInteractionFormData | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const { toast } = useToast();
 
   const onConnect = useCallback(
@@ -121,6 +134,433 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         : [...prev, agentId]
     );
   }, []);
+
+  // Handle flow restart from orchestrator
+  const handleFlowRestart = useCallback((config: FlowRestartConfig) => {
+    toast({
+      title: 'Flow Restarted',
+      description: `Starting iteration ${config.iterationCount} with updated context`,
+    });
+
+    // Reset current flow state
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setCurrentRound(1);
+    setDebateHistory([]);
+    setValidationResults([]);
+    setShowFlowOrchestrator(false);
+
+    // Update selected agents from config
+    setSelectedAgents(config.selectedAgents);
+
+    // Set the enhanced prompt as input value
+    const enhancedQuestion = `${config.metadata.originalQuestion}\n\nUpdated Context: ${config.metadata.contextUpdates}`;
+    setInputValue(enhancedQuestion);
+
+    // Auto-submit the enhanced prompt
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+  }, [toast, setNodes, setEdges]);
+
+  // Handle validation completion and show orchestrator
+  const handleValidationComplete = useCallback((validationData: any[]) => {
+    // Prepare data for the orchestrator
+    const formData: UserInteractionFormData = {
+      validatorResponses: validationData.map((validation, index) => ({
+        id: `validator_${index}`,
+        agentName: validation.agentName || `Agent ${index + 1}`,
+        points: validation.points || [
+          {
+            id: `point_${index}_1`,
+            content: validation.summary || 'No summary available',
+            isKept: true,
+            feedback: ''
+          }
+        ],
+        overallFeedback: ''
+      })),
+      originalQuestion: inputValue,
+      contextUpdates: '',
+      additionalInstructions: '',
+      selectedAgents: selectedAgents,
+      availableAgents: availableAgents.map(agent => ({
+        id: agent.id,
+        name: agent.name,
+        role: agent.description || 'Agent'
+      }))
+    };
+
+    setOrchestratorData(formData);
+    setShowFlowOrchestrator(true);
+  }, [inputValue, selectedAgents, availableAgents]);
+
+  // Handle adding validator table node to flow
+  const addValidatorTableNode = useCallback((validationData: any[]) => {
+    const validatorTableNode = {
+      id: 'validator-table',
+      type: 'validatorTable',
+      position: { x: 400, y: 750 },
+      data: {
+        responses: [{
+          id: 'validator_summary',
+          agentName: 'Validator Agent Analysis',
+          points: validationData.map((result, index) => ({
+            id: `validation_${index}`,
+            content: `${result.claim}: ${result.evidence} (Confidence: ${result.confidence}%)`,
+            isKept: result.isValid,
+            feedback: result.logicalFallacies?.length > 0 ? `Logical issues: ${result.logicalFallacies.join(', ')}` : ''
+          })),
+          overallFeedback: `Validation completed for ${validationData.length} claims. ${validationData.filter(r => r.isValid).length} validated as correct.`
+        }],
+        onResponseUpdate: (responses: any[]) => {
+          console.log('Validator responses updated:', responses);
+        },
+        onRegenerate: async () => {
+          console.log('Starting automated regeneration...');
+
+          if (!validationData || validationData.length === 0) {
+            toast({
+              title: "No validation data",
+              description: "No validation results available for regeneration.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          try {
+            toast({
+              title: "Automated Regeneration Started",
+              description: "Saving current flow state and generating new context...",
+            });
+
+            // Import the context manager and report functions
+            const { ContextManager } = await import('@/lib/context-manager');
+            const { saveRegenerationReport, saveFlowStateSnapshot } = await import('@/actions/reports');
+
+            const contextManager = ContextManager.getInstance();
+
+            // Save current flow state before regeneration
+            if (currentSessionId) {
+              const snapshotResult = await saveFlowStateSnapshot(
+                currentSessionId,
+                nodes,
+                edges,
+                validationResults,
+                currentRound
+              );
+
+              if (snapshotResult.success) {
+                toast({
+                  title: "Flow State Saved",
+                  description: `Current flow preserved with snapshot ID: ${snapshotResult.data?.snapshotId}`,
+                });
+              }
+            }
+
+            // Automatically process validation data and generate context
+            const newContext = contextManager.processValidationDataAutomatically(
+              validationData,
+              inputValue || '',
+              selectedAgents || []
+            );
+
+            // Save regeneration report if we have a session
+            if (currentSessionId) {
+              const reportResult = await saveRegenerationReport(
+                currentSessionId,
+                inputValue || '',
+                validationData,
+                newContext,
+                newContext.iterationCount
+              );
+
+              if (reportResult.success) {
+                toast({
+                  title: "Report Saved",
+                  description: `Regeneration report saved with ID: ${reportResult.data?.reportId}`,
+                });
+              }
+            }
+
+            // Prepare flow restart configuration
+            const restartConfig = contextManager.prepareFlowRestart(newContext);
+
+            // Clear all existing nodes and edges for fresh flow experience
+            setNodes([{
+              id: 'start',
+              type: 'question',
+              position: { x: 400, y: 50 },
+              data: {
+                label: 'Regenerated Flow',
+                question: restartConfig.enhancedPrompt,
+                status: 'processing'
+              },
+            }]);
+            setEdges([]);
+
+            // Clear validation data for fresh start
+            setValidationResults([]);
+            setValidationData([]);
+
+            // Increment round for new iteration
+            setCurrentRound(prev => prev + 1);
+
+            // Get authenticated Supabase client
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+              throw new Error('Authentication required. Please log in.');
+            }
+
+            // Start new flow with enhanced context
+            const response = await fetch('/api/flow/stream', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                query: restartConfig.enhancedPrompt,
+                selectedAgents: restartConfig.selectedAgents,
+                sessionId: currentSessionId,
+                regenerateValidation: true,
+                contextId: restartConfig.contextId,
+                iterationCount: restartConfig.iterationCount
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to start regenerated flow');
+            }
+
+            // Handle streaming response for regenerated flow
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (!reader) {
+              throw new Error('Failed to get response reader');
+            }
+
+            let buffer = '';
+            const streamingNodes = new Map();
+            const streamingEdges = new Map();
+
+            while (true) {
+              const { done, value } = await reader.read();
+
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const eventData = JSON.parse(line.slice(6));
+
+                    switch (eventData.type) {
+                      case 'node_added':
+                        const newNode = eventData.data;
+                        streamingNodes.set(newNode.id, newNode);
+                        setNodes(prevNodes => {
+                          const existingNode = prevNodes.find(n => n.id === newNode.id);
+                          if (existingNode) {
+                            return prevNodes.map(n => n.id === newNode.id ? newNode : n);
+                          }
+                          return [...prevNodes, newNode];
+                        });
+
+                        // Apply layout and focus for regenerated nodes
+                        setTimeout(() => {
+                          autoLayout();
+                          focusOnNode(newNode.id);
+                        }, 300);
+
+                        // Add connecting edges based on node type for regenerated flow
+                        if (newNode.id === 'distributor') {
+                          const edge = {
+                            id: 'start-distributor',
+                            source: 'start',
+                            target: 'distributor',
+                            animated: true
+                          };
+                          streamingEdges.set(edge.id, edge);
+                          setEdges(prevEdges => [...prevEdges, edge]);
+                        } else if (newNode.id.startsWith('agent-')) {
+                          const edge = {
+                            id: `distributor-${newNode.id}`,
+                            source: 'distributor',
+                            target: newNode.id,
+                            animated: true
+                          };
+                          streamingEdges.set(edge.id, edge);
+                          setEdges(prevEdges => [...prevEdges, edge]);
+                        } else if (newNode.id.startsWith('response-')) {
+                          const agentId = newNode.id.replace('response-', 'agent-');
+                          const edge = {
+                            id: `${agentId}-${newNode.id}`,
+                            source: agentId,
+                            target: newNode.id,
+                            animated: true
+                          };
+                          streamingEdges.set(edge.id, edge);
+                          setEdges(prevEdges => [...prevEdges, edge]);
+
+                          // Connect response to validator if validator exists
+                          if (streamingNodes.has('validator')) {
+                            const validatorEdge = {
+                              id: `${newNode.id}-validator`,
+                              source: newNode.id,
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                          }
+                        } else if (newNode.id === 'validator') {
+                          // Connect all existing response nodes to validator
+                          const responseNodes = Array.from(streamingNodes.values()).filter(node => node.id.startsWith('response-'));
+                          responseNodes.forEach(responseNode => {
+                            const validatorEdge = {
+                              id: `${responseNode.id}-validator`,
+                              source: responseNode.id,
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => {
+                              const edgeExists = prevEdges.some(e => e.id === validatorEdge.id);
+                              return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
+                            });
+                          });
+                        }
+                        break;
+
+                      case 'node_updated':
+                        const { id, updates } = eventData.data;
+                        setNodes(prevNodes =>
+                          prevNodes.map(node =>
+                            node.id === id ? { ...node, ...updates } : node
+                          )
+                        );
+                        break;
+
+                      case 'edge_added':
+                        const newEdge = eventData.data;
+                        streamingEdges.set(newEdge.id, newEdge);
+                        setEdges(prevEdges => {
+                          const existingEdge = prevEdges.find(e => e.id === newEdge.id);
+                          if (existingEdge) {
+                            return prevEdges.map(e => e.id === newEdge.id ? newEdge : e);
+                          }
+                          return [...prevEdges, newEdge];
+                        });
+                        break;
+
+                      case 'agent_processing':
+                        toast({
+                          title: "Agent Processing",
+                          description: `${eventData.data.agentName} is analyzing the regenerated query...`,
+                          duration: 2000,
+                        });
+                        break;
+
+                      case 'agent_response':
+                        if (!eventData.data.error) {
+                          toast({
+                            title: "Response Generated",
+                            description: `${eventData.data.agentName} completed regenerated analysis`,
+                            duration: 2000,
+                          });
+                        }
+                        break;
+
+                      case 'validation_start':
+                        toast({
+                          title: "Validation Started",
+                          description: `Validating ${eventData.data.responseCount} regenerated responses...`,
+                          duration: 3000,
+                        });
+                        break;
+
+                      case 'validation_result':
+                        setValidationResults(prev => [...prev, eventData.data]);
+                        break;
+
+                      case 'complete':
+                        // Update start node to completed status
+                        setNodes(prevNodes =>
+                          prevNodes.map(node =>
+                            node.id === 'start'
+                              ? { ...node, data: { ...node.data, status: 'answered' } }
+                              : node
+                          )
+                        );
+
+                        // Ensure all edges are properly connected
+                        if (streamingEdges.size > 0) {
+                          setEdges(prevEdges => {
+                            const edgeIds = new Set(prevEdges.map(e => e.id));
+                            const allStreamingEdges = Array.from(streamingEdges.values());
+                            const missingEdges = allStreamingEdges.filter(e => !edgeIds.has(e.id));
+
+                            if (missingEdges.length > 0) {
+                              console.log('Restoring missing edges in regenerated flow:', missingEdges.map(e => e.id));
+                              return [...prevEdges, ...missingEdges];
+                            }
+                            return prevEdges;
+                          });
+                        }
+
+                        // Add new validator table node with regenerated results
+                        if (eventData.data.validationResults) {
+                          addValidatorTableNode(eventData.data.validationResults);
+                        }
+
+                        toast({
+                          title: "Regeneration Complete",
+                          description: `Flow regenerated successfully with ${eventData.data.validationResults?.length || 0} new validation results. Previous flow state preserved.`,
+                        });
+                        return;
+
+                      case 'error':
+                        throw new Error(eventData.data.error || 'Regeneration error occurred');
+                    }
+                  } catch (parseError) {
+                    console.error('Error parsing regeneration stream event:', parseError);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error during automated regeneration:', error);
+            toast({
+              title: "Regeneration Failed",
+              description: "Failed to complete automated regeneration. Please try again.",
+              variant: "destructive"
+            });
+          }
+        }
+      }
+    };
+
+    setNodes(prevNodes => [...prevNodes, validatorTableNode]);
+
+    // Connect validator to validator table
+    const validatorTableEdge = {
+      id: 'validator-validator-table',
+      source: 'validator',
+      target: 'validator-table',
+      animated: true
+    };
+
+    setEdges(prevEdges => [...prevEdges, validatorTableEdge]);
+  }, [setNodes, setEdges]);
 
   const generateAgentNode = (id: string, position: { x: number; y: number }, name: string, role: 'advocate' | 'opponent' | 'moderator', topic?: string) => ({
     id,
@@ -306,19 +746,24 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
     // Add to history
     setDebateHistory(prev => [...prev, topic]);
 
+    // Clear existing flow for new streaming session
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+    setValidationResults([]);
+
     try {
       // Get authenticated Supabase client
       const supabase = createClient();
-      
+
       // Get the session to include auth headers
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         throw new Error('Authentication required. Please log in.');
       }
 
-      // Call the API to process the query with authentication
-      const response = await fetch('/api/flow/process', {
+      // Use streaming API with Server-Sent Events
+      const response = await fetch('/api/flow/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -336,9 +781,224 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         throw new Error(errorData.error || 'Failed to process query');
       }
 
-      const data = await response.json();
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      // Create flow visualization based on API response
+      if (!reader) {
+        throw new Error('Failed to get response reader');
+      }
+
+      let buffer = '';
+      const streamingNodes = new Map();
+      const streamingEdges = new Map();
+      let completedAgents = 0;
+      let totalAgents = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const eventData = JSON.parse(line.slice(6));
+
+              switch (eventData.type) {
+                case 'node_added':
+                  const newNode = eventData.data;
+                  streamingNodes.set(newNode.id, newNode);
+
+                  // Add node with animation
+                  setNodes(prevNodes => {
+                    const existingNode = prevNodes.find(n => n.id === newNode.id);
+                    if (existingNode) {
+                      return prevNodes.map(n => n.id === newNode.id ? newNode : n);
+                    }
+                    return [...prevNodes, newNode];
+                  });
+
+                  // Apply hierarchical layout and auto-focus on the newly added node
+                  setTimeout(() => {
+                    autoLayout();
+                    focusOnNode(newNode.id);
+                  }, 300);
+
+                  // Add connecting edges based on node type
+                  if (newNode.id === 'distributor') {
+                    const edge = {
+                      id: 'start-distributor',
+                      source: 'start',
+                      target: 'distributor',
+                      animated: true
+                    };
+                    streamingEdges.set(edge.id, edge);
+                    setEdges(prevEdges => [...prevEdges, edge]);
+                  } else if (newNode.id.startsWith('agent-')) {
+                    totalAgents++;
+                    const edge = {
+                      id: `distributor-${newNode.id}`,
+                      source: 'distributor',
+                      target: newNode.id,
+                      animated: true
+                    };
+                    streamingEdges.set(edge.id, edge);
+                    setEdges(prevEdges => [...prevEdges, edge]);
+                  } else if (newNode.id.startsWith('response-')) {
+                    const agentId = newNode.id.replace('response-', 'agent-');
+                    const edge = {
+                      id: `${agentId}-${newNode.id}`,
+                      source: agentId,
+                      target: newNode.id,
+                      animated: true
+                    };
+                    streamingEdges.set(edge.id, edge);
+                    setEdges(prevEdges => [...prevEdges, edge]);
+
+                    // Connect response to validator if validator exists
+                    if (streamingNodes.has('validator')) {
+                      const validatorEdge = {
+                        id: `${newNode.id}-validator`,
+                        source: newNode.id,
+                        target: 'validator',
+                        animated: true
+                      };
+                      streamingEdges.set(validatorEdge.id, validatorEdge);
+                      setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                    }
+                  } else if (newNode.id === 'validator') {
+                    // Connect all existing response nodes to validator
+                    const responseNodes = Array.from(streamingNodes.values()).filter(node => node.id.startsWith('response-'));
+                    responseNodes.forEach(responseNode => {
+                      const validatorEdge = {
+                        id: `${responseNode.id}-validator`,
+                        source: responseNode.id,
+                        target: 'validator',
+                        animated: true
+                      };
+                      streamingEdges.set(validatorEdge.id, validatorEdge);
+                      setEdges(prevEdges => {
+                        const edgeExists = prevEdges.some(e => e.id === validatorEdge.id);
+                        return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
+                      });
+                    });
+                  }
+                  break;
+
+                case 'node_updated':
+                  const { id, updates } = eventData.data;
+                  setNodes(prevNodes =>
+                    prevNodes.map(node =>
+                      node.id === id ? { ...node, ...updates } : node
+                    )
+                  );
+
+                  if (id.startsWith('agent-') && updates.data?.status === 'completed') {
+                    completedAgents++;
+                  }
+                  break;
+
+                case 'agent_processing':
+                  toast({
+                    title: "Agent Processing",
+                    description: `${eventData.data.agentName} is analyzing the query...`,
+                    duration: 2000,
+                  });
+                  break;
+
+                case 'agent_response':
+                  if (!eventData.data.error) {
+                    toast({
+                      title: "Response Generated",
+                      description: `${eventData.data.agentName} completed analysis`,
+                      duration: 2000,
+                    });
+                  }
+                  break;
+
+                case 'validation_start':
+                  toast({
+                    title: "Validation Started",
+                    description: `Validating ${eventData.data.responseCount} responses...`,
+                    duration: 3000,
+                  });
+                  break;
+
+                case 'validation_result':
+                  setValidationResults(prev => [...prev, eventData.data]);
+                  break;
+
+                case 'complete':
+                  setProcessingData(eventData.data);
+
+                  // Add validator table node instead of showing modal
+                  if (eventData.data.validationResults) {
+                    addValidatorTableNode(eventData.data.validationResults);
+                  }
+
+                  // Ensure all edges are preserved after completion
+                  setEdges(prevEdges => {
+                    const edgeIds = new Set(prevEdges.map(e => e.id));
+                    const missingEdges = Array.from(streamingEdges.values()).filter(e => !edgeIds.has(e.id));
+                    return [...prevEdges, ...missingEdges];
+                  });
+
+                  toast({
+                    title: "Flow Complete",
+                    description: `Successfully processed query with ${eventData.data.agentResponses.length} agent responses`,
+                    duration: 5000,
+                  });
+                  break;
+
+                case 'error':
+                  throw new Error(eventData.data.error || 'Streaming error occurred');
+              }
+            } catch (parseError) {
+              console.error('Error parsing stream event:', parseError);
+            }
+          }
+        }
+      }
+
+      // Update start node to completed status and ensure all edges are preserved
+      setNodes(prevNodes =>
+        prevNodes.map(node =>
+          node.id === 'start'
+            ? { ...node, data: { ...node.data, status: 'answered' } }
+            : node
+        )
+      );
+
+      // Final edge preservation - ensure all streaming edges are maintained
+      if (streamingEdges.size > 0) {
+        setEdges(prevEdges => {
+          const edgeIds = new Set(prevEdges.map(e => e.id));
+          const allStreamingEdges = Array.from(streamingEdges.values());
+          const missingEdges = allStreamingEdges.filter(e => !edgeIds.has(e.id));
+
+          if (missingEdges.length > 0) {
+            console.log('Restoring missing edges:', missingEdges.map(e => e.id));
+            return [...prevEdges, ...missingEdges];
+          }
+          return prevEdges;
+        });
+      }
+
+    } catch (error) {
+      console.error('Error processing streaming query:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to process query',
+        variant: "destructive",
+        duration: 5000,
+      });
+
+      // Fallback: Create basic flow visualization on error
       const newNodes: Node[] = [];
       const newEdges: Edge[] = [];
 
@@ -349,7 +1009,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         position: { x: 400, y: 50 },
         data: {
           label: 'Query Processed',
-          question: data.query,
+          question: topic,
           status: 'answered'
         }
       };
@@ -364,7 +1024,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
           topic: 'Task Distribution',
           status: 'completed',
           rounds: 1,
-          participants: data.agents?.map((a: any) => a.name) || ['Agent 1', 'Agent 2']
+          participants: availableAgents?.map((a: Agent) => a.name) || ['Agent 1', 'Agent 2']
         }
       };
       newNodes.push(distributorNode);
@@ -378,17 +1038,17 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
       });
 
       // Agent nodes for parallel processing
-      if (data.agents) {
-        data.agents.forEach((agent: any, index: number) => {
+      if (availableAgents && availableAgents.length > 0) {
+        availableAgents.forEach((agent: Agent, index: number) => {
           const agentNode = {
             id: `agent-${agent.id}`,
             type: 'agent',
             position: { x: 200 + (index * 200), y: 300 },
             data: {
               name: agent.name,
-              role: agent.role,
+              role: 'analyst' as const,
               status: 'active',
-              topic: data.query
+              topic: topic
             }
           };
           newNodes.push(agentNode);
@@ -404,8 +1064,8 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
       }
 
       // Agent response nodes
-      if (data.agentResponses) {
-        data.agentResponses.forEach((response: any, index: number) => {
+      if (processingData?.agentResponses) {
+        processingData.agentResponses.forEach((response: any, index: number) => {
           const responseNode = {
             id: `response-${response.agentId}`,
             type: 'response',
@@ -446,8 +1106,8 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
       newNodes.push(validatorNode);
 
       // Connect all responses to validator
-      if (data.agentResponses) {
-        data.agentResponses.forEach((response: any) => {
+      if (processingData?.agentResponses) {
+        processingData.agentResponses.forEach((response: any) => {
           newEdges.push({
             id: `response-validator-${response.agentId}`,
             source: `response-${response.agentId}`,
@@ -457,16 +1117,25 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         });
       }
 
-      // Store validation results and show validation table
-      setValidationResults(data.validationResults || []);
-      setProcessingData(data);
-      setShowValidationTable(true);
+      // Store validation results and add validator table node
+      setValidationResults(processingData?.validationResults || []);
+      // Add validator table node to flow instead of showing modal
+      if (processingData?.validationResults) {
+        addValidatorTableNode(processingData.validationResults);
+      }
 
       setNodes(newNodes);
       setEdges(newEdges);
+    } finally {
+      // Clear input and reset processing state
+      setInputValue('');
+      setIsProcessing(false);
+    }
+  }, [inputValue, isProcessing, selectedAgents, agents, availableAgents, toast]);
 
-    } catch (error) {
-      console.error('Error processing query:', error);
+  // Fallback function for creating nodes when API fails
+  const createFallbackNodes = (topic: string, data: any) => {
+    try {
       // Fallback to original behavior on API error
       const nodeId = generateNodeId();
       const isQuestion = topic.includes('?') || topic.toLowerCase().startsWith('what') || topic.toLowerCase().startsWith('how') || topic.toLowerCase().startsWith('why');
@@ -530,12 +1199,10 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         ...newNodes,
       ]);
       setEdges(prevEdges => [...prevEdges, ...newEdges]);
+    } catch (fallbackError) {
+      console.error('Error in fallback node creation:', fallbackError);
     }
-
-    // Clear input
-    setInputValue('');
-    setIsProcessing(false);
-  }, [inputValue, isProcessing, selectedAgents, agents, availableAgents, toast]);
+  };
 
   const clearFlow = () => {
     setNodes(initialNodes);
@@ -543,26 +1210,93 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
     setDebateHistory([]);
   };
 
-  // Auto-layout function to organize nodes
+  // Auto-focus function for newly added nodes
+  const focusOnNode = useCallback((nodeId: string) => {
+    if (reactFlowInstance) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node) {
+        // Center the view on the new node with smooth transition
+        reactFlowInstance.setCenter(node.position.x, node.position.y, {
+          zoom: 1.2,
+          duration: 800,
+        });
+      }
+    }
+  }, [nodes, reactFlowInstance]);
+
+  // Enhanced hierarchical layout function with multiple directions
   const autoLayout = useCallback(() => {
     setNodes((nds) => {
-      const layoutedNodes = nds.map((node, index) => {
-        if (node.id === 'start') return node;
+      if (nds.length === 0) return nds;
 
-        const row = Math.floor(index / 3);
-        const col = index % 3;
+      // Create a new directed graph
+      const dagreGraph = new dagre.graphlib.Graph();
+      dagreGraph.setDefaultEdgeLabel(() => ({}));
 
+      // Configure the layout based on selected direction
+      const layoutConfig = {
+        rankdir: layoutDirection,
+        nodesep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 60 : 80,
+        ranksep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 120 : 100,
+      };
+
+      dagreGraph.setGraph(layoutConfig);
+
+      // Define node dimensions based on type
+      const getNodeDimensions = (nodeType: string) => {
+        const dimensions = {
+          agent: { width: 120, height: 100 },
+          response: { width: 240, height: 180 },
+          question: { width: 200, height: 120 },
+          debate: { width: 220, height: 140 },
+          default: { width: 180, height: 100 }
+        };
+        return dimensions[nodeType as keyof typeof dimensions] || dimensions.default;
+      };
+
+      // Add nodes to the graph
+      nds.forEach((node) => {
+        const dimensions = getNodeDimensions(node.type || 'default');
+        dagreGraph.setNode(node.id, {
+          width: dimensions.width,
+          height: dimensions.height,
+        });
+      });
+
+      // Add edges to the graph
+      edges.forEach((edge) => {
+        dagreGraph.setEdge(edge.source, edge.target);
+      });
+
+      // Calculate the layout
+      dagre.layout(dagreGraph);
+
+      // Apply the calculated positions to nodes
+      const layoutedNodes = nds.map((node) => {
+        const nodeWithPosition = dagreGraph.node(node.id);
         return {
           ...node,
           position: {
-            x: col * 300 + 100,
-            y: row * 200 + 150,
+            x: nodeWithPosition.x - nodeWithPosition.width / 2,
+            y: nodeWithPosition.y - nodeWithPosition.height / 2,
           },
+          style: {
+            ...node.style,
+            transition: 'all 0.5s ease-in-out'
+          }
         };
       });
+
       return layoutedNodes;
     });
-  }, [setNodes]);
+  }, [edges, layoutDirection]);
+
+  // Auto-layout when layout direction changes
+  useEffect(() => {
+    if (nodes.length > 0) {
+      autoLayout();
+    }
+  }, [layoutDirection, autoLayout]);
 
   // Add real-time typing effect
   useEffect(() => {
@@ -621,10 +1355,10 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
     try {
       // Get authenticated Supabase client
       const supabase = createClient();
-      
+
       // Get the session to include auth headers
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         throw new Error('Authentication required. Please log in.');
       }
@@ -652,14 +1386,12 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
       if (data.action === 'report_generated') {
         // Handle report generation
         alert('Report generated successfully! Download will start shortly.');
-        setShowValidationTable(false);
         // Reset for new session
         setCurrentRound(1);
         setCurrentSessionId(null);
       } else if (data.action === 'next_round_ready') {
         // Prepare for next round
         setCurrentRound(data.nextRoundNumber);
-        setShowValidationTable(false);
         // Clear current flow to prepare for next round
         setNodes([initialNodes[0]]); // Keep only start node
         setEdges([]);
@@ -681,9 +1413,23 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
           fitView
           className="bg-gray-50"
+          defaultEdgeOptions={{
+            animated: true,
+            style: { strokeWidth: 2 },
+          }}
+          nodesDraggable={true}
+          nodesConnectable={true}
+          elementsSelectable={true}
+          panOnDrag={true}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          zoomOnDoubleClick={true}
+          minZoom={0.1}
+          maxZoom={2}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
         </ReactFlow>
@@ -706,9 +1452,51 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         )}
       </div>
 
+      {/* Flow Orchestrator Modal */}
+      {showFlowOrchestrator && orchestratorData && (
+        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            <FlowOrchestrator
+              initialData={orchestratorData}
+              onFlowRestart={handleFlowRestart}
+              onCancel={() => setShowFlowOrchestrator(false)}
+              availableAgents={availableAgents.map(agent => ({
+                id: agent.id,
+                name: agent.name,
+                role: agent.description || 'Agent'
+              }))}
+            />
+          </div>
+        </div>
+      )}
+
+
+
       {/* Input Area */}
       <div className="absolute bottom-4 left-4 right-4 z-10">
         <form onSubmit={handleSubmit} className="flex gap-2">
+          {/* Layout Selector */}
+          <div className="flex gap-1 shrink-0">
+            {[
+              { key: 'TB', label: '↓', tooltip: 'Top to Bottom' },
+              { key: 'BT', label: '↑', tooltip: 'Bottom to Top' },
+              { key: 'LR', label: '→', tooltip: 'Left to Right' },
+              { key: 'RL', label: '←', tooltip: 'Right to Left' }
+            ].map(({ key, label, tooltip }) => (
+              <Button
+                key={key}
+                variant={layoutDirection === key ? 'default' : 'outline'}
+                size="icon"
+                className="w-8 h-8 text-xs"
+                onClick={() => setLayoutDirection(key as 'TB' | 'BT' | 'LR' | 'RL')}
+                title={tooltip}
+                type="button"
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
           <Sheet open={showAgentPanel} onOpenChange={setShowAgentPanel}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0">
@@ -812,6 +1600,18 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
           <Button type="submit" disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0}>
             <Send className="h-4 w-4" />
           </Button>
+
+          {/* Context Management Button */}
+          {validationResults.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleValidationComplete(validationResults)}
+              className="shrink-0"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          )}
         </form>
       </div>
 
@@ -819,3 +1619,5 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
     </div>
   );
 }
+
+export default FlowVisualization;

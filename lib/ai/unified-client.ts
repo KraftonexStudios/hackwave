@@ -1,12 +1,13 @@
-import { generateText, generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
-import { groq } from '@ai-sdk/groq';
-import { z } from 'zod';
+import { generateText, generateObject } from "ai";
+import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq";
+import { z } from "zod";
 
 interface AgentConfig {
   role: "advocate" | "opponent" | "moderator";
   name: string;
   systemPrompt: string;
+  id?: string;
 }
 
 interface AgentResponse {
@@ -32,21 +33,21 @@ interface ValidationResult {
   selected: boolean;
 }
 
-type AIProvider = 'gemini' | 'groq';
+type AIProvider = "gemini" | "groq";
 
 class UnifiedAIClient {
   private getModel(provider: AIProvider) {
     switch (provider) {
-      case 'gemini':
+      case "gemini":
         if (!process.env.GEMINI_API_KEY) {
-          throw new Error('GEMINI_API_KEY environment variable is required');
+          throw new Error("GEMINI_API_KEY environment variable is required");
         }
-        return google('gemini-1.5-pro');
-      case 'groq':
+        return google("gemini-1.5-pro");
+      case "groq":
         if (!process.env.GROQ_API_KEY) {
-          throw new Error('GROQ_API_KEY environment variable is required');
+          throw new Error("GROQ_API_KEY environment variable is required");
         }
-        return groq('llama-3.3-70b-versatile');
+        return groq("llama-3.3-70b-versatile");
       default:
         throw new Error(`Unsupported AI provider: ${provider}`);
     }
@@ -109,7 +110,7 @@ Always provide:
 - Synthesis of key insights
 - Areas of consensus and disagreement
 - Recommendations for resolution
-- Overall confidence in conclusions (0-100)`
+- Overall confidence in conclusions (0-100)`,
     };
     return prompts[role as keyof typeof prompts] || prompts.moderator;
   }
@@ -118,17 +119,18 @@ Always provide:
     agent: AgentConfig,
     query: string,
     context?: string,
-    provider: AIProvider = 'gemini'
+    provider: AIProvider = "gemini"
   ): Promise<AgentResponse> {
     const startTime = Date.now();
-    
+
     try {
       const model = this.getModel(provider);
-      const systemPrompt = agent.systemPrompt || this.getAgentSystemPrompt(agent.role);
-      
+      const systemPrompt =
+        agent.systemPrompt || this.getAgentSystemPrompt(agent.role);
+
       const prompt = `${systemPrompt}
 
-Context: ${context || 'No additional context provided'}
+Context: ${context || "No additional context provided"}
 
 Query: ${query}
 
@@ -147,30 +149,32 @@ Format your response as a detailed analysis addressing the query from your role 
         prompt,
         providerOptions: {
           groq: {
-            parallelToolCalls: true
-          }
+            parallelToolCalls: true,
+          },
         },
         temperature: 0.7,
       });
 
       const processingTime = Date.now() - startTime;
-      
+
       // Parse the response to extract structured information
       const response = result.text;
-      
+
       // Extract confidence (look for patterns like "confidence: 85" or "85% confident")
-      const confidenceMatch = response.match(/confidence[:\s]*([0-9]+)/i) || response.match(/([0-9]+)%?\s*confident/i);
+      const confidenceMatch =
+        response.match(/confidence[:\s]*([0-9]+)/i) ||
+        response.match(/([0-9]+)%?\s*confident/i);
       const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 75;
-      
+
       // Determine sentiment based on keywords and tone
       const sentiment = this.analyzeSentiment(response);
-      
+
       // Extract reasoning and evidence (simplified extraction)
       const reasoning = this.extractReasoning(response);
       const evidence = this.extractEvidence(response);
 
       return {
-        agentId: agent.name.toLowerCase().replace(/\s+/g, '-'),
+        agentId: agent.id || agent.name.toLowerCase().replace(/\s+/g, "-"),
         agentName: agent.name,
         role: agent.role,
         response,
@@ -178,36 +182,65 @@ Format your response as a detailed analysis addressing the query from your role 
         sentiment,
         processingTime,
         reasoning,
-        evidence
+        evidence,
       };
     } catch (error) {
-      console.error(`Error generating response for agent ${agent.name}:`, error);
-      throw new Error(`Failed to generate agent response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(
+        `Error generating response for agent ${agent.name}:`,
+        error
+      );
+      throw new Error(
+        `Failed to generate agent response: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 
   private analyzeSentiment(text: string): "positive" | "negative" | "neutral" {
-    const positiveWords = ['support', 'agree', 'excellent', 'strong', 'compelling', 'effective', 'beneficial', 'advantage'];
-    const negativeWords = ['oppose', 'disagree', 'weak', 'flawed', 'problematic', 'concerning', 'disadvantage', 'harmful'];
-    
+    const positiveWords = [
+      "support",
+      "agree",
+      "excellent",
+      "strong",
+      "compelling",
+      "effective",
+      "beneficial",
+      "advantage",
+    ];
+    const negativeWords = [
+      "oppose",
+      "disagree",
+      "weak",
+      "flawed",
+      "problematic",
+      "concerning",
+      "disadvantage",
+      "harmful",
+    ];
+
     const lowerText = text.toLowerCase();
-    const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
-    const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
-    
-    if (positiveCount > negativeCount) return 'positive';
-    if (negativeCount > positiveCount) return 'negative';
-    return 'neutral';
+    const positiveCount = positiveWords.filter((word) =>
+      lowerText.includes(word)
+    ).length;
+    const negativeCount = negativeWords.filter((word) =>
+      lowerText.includes(word)
+    ).length;
+
+    if (positiveCount > negativeCount) return "positive";
+    if (negativeCount > positiveCount) return "negative";
+    return "neutral";
   }
 
   private extractReasoning(text: string): string[] {
     const reasoningPatterns = [
       /(?:because|since|due to|given that|considering)\s+([^.!?]+[.!?])/gi,
       /(?:therefore|thus|consequently|as a result)\s+([^.!?]+[.!?])/gi,
-      /(?:first|second|third|finally|moreover|furthermore)\s+([^.!?]+[.!?])/gi
+      /(?:first|second|third|finally|moreover|furthermore)\s+([^.!?]+[.!?])/gi,
     ];
-    
+
     const reasoning: string[] = [];
-    reasoningPatterns.forEach(pattern => {
+    reasoningPatterns.forEach((pattern) => {
       const matches = text.matchAll(pattern);
       for (const match of matches) {
         if (match[1] && match[1].trim().length > 10) {
@@ -215,7 +248,7 @@ Format your response as a detailed analysis addressing the query from your role 
         }
       }
     });
-    
+
     return reasoning.slice(0, 5); // Limit to 5 reasoning points
   }
 
@@ -223,11 +256,11 @@ Format your response as a detailed analysis addressing the query from your role 
     const evidencePatterns = [
       /(?:studies show|research indicates|data suggests|evidence shows)\s+([^.!?]+[.!?])/gi,
       /(?:according to|based on|statistics show)\s+([^.!?]+[.!?])/gi,
-      /(?:for example|for instance|such as)\s+([^.!?]+[.!?])/gi
+      /(?:for example|for instance|such as)\s+([^.!?]+[.!?])/gi,
     ];
-    
+
     const evidence: string[] = [];
-    evidencePatterns.forEach(pattern => {
+    evidencePatterns.forEach((pattern) => {
       const matches = text.matchAll(pattern);
       for (const match of matches) {
         if (match[1] && match[1].trim().length > 10) {
@@ -235,34 +268,38 @@ Format your response as a detailed analysis addressing the query from your role 
         }
       }
     });
-    
+
     return evidence.slice(0, 5); // Limit to 5 evidence points
   }
 
   async validateResponses(
     responses: AgentResponse[],
     originalQuery: string,
-    provider: AIProvider = 'gemini'
+    provider: AIProvider = "gemini"
   ): Promise<ValidationResult[]> {
     try {
       const model = this.getModel(provider);
-      
+
       const validationSchema = z.object({
-        validations: z.array(z.object({
-          id: z.string(),
-          claim: z.string(),
-          isValid: z.boolean(),
-          confidence: z.number().min(0).max(100),
-          evidence: z.string(),
-          logicalFallacies: z.array(z.string()),
-          supportingFacts: z.array(z.string())
-        }))
+        validations: z.array(
+          z.object({
+            id: z.string(),
+            claim: z.string(),
+            isValid: z.boolean(),
+            confidence: z.number().min(0).max(100),
+            evidence: z.string(),
+            logicalFallacies: z.array(z.string()),
+            supportingFacts: z.array(z.string()),
+          })
+        ),
       });
 
       const prompt = `Analyze and validate the following agent responses to the query: "${originalQuery}"
 
 Responses:
-${responses.map((r, i) => `${i + 1}. ${r.agentName} (${r.role}): ${r.response}`).join('\n\n')}
+${responses
+  .map((r, i) => `${i + 1}. ${r.agentName} (${r.role}): ${r.response}`)
+  .join("\n\n")}
 
 For each response, provide validation including:
 - Unique ID
@@ -282,22 +319,22 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
         temperature: 0.3,
       });
 
-      return result.object.validations.map(validation => ({
+      return result.object.validations.map((validation) => ({
         ...validation,
-        selected: false // Default to not selected
+        selected: false, // Default to not selected
       }));
     } catch (error) {
-      console.error('Error validating responses:', error);
+      console.error("Error validating responses:", error);
       // Return basic validation results as fallback
       return responses.map((response, index) => ({
         id: `validation-${index}`,
-        claim: response.response.substring(0, 100) + '...',
+        claim: response.response.substring(0, 100) + "...",
         isValid: true,
         confidence: response.confidence,
-        evidence: 'Automated validation unavailable',
+        evidence: "Automated validation unavailable",
         logicalFallacies: [],
         supportingFacts: [],
-        selected: false
+        selected: false,
       }));
     }
   }
@@ -306,20 +343,29 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
     responses: AgentResponse[],
     validationResults: ValidationResult[],
     userFeedback?: string,
-    provider: AIProvider = 'gemini'
+    provider: AIProvider = "gemini"
   ): Promise<string[]> {
     try {
       const model = this.getModel(provider);
-      
+
       const prompt = `Generate key insights from this debate analysis:
 
 Agent Responses:
-${responses.map(r => `- ${r.agentName}: ${r.response.substring(0, 200)}...`).join('\n')}
+${responses
+  .map((r) => `- ${r.agentName}: ${r.response.substring(0, 200)}...`)
+  .join("\n")}
 
 Validation Results:
-${validationResults.map(v => `- ${v.claim}: ${v.isValid ? 'Valid' : 'Invalid'} (${v.confidence}% confidence)`).join('\n')}
+${validationResults
+  .map(
+    (v) =>
+      `- ${v.claim}: ${v.isValid ? "Valid" : "Invalid"} (${
+        v.confidence
+      }% confidence)`
+  )
+  .join("\n")}
 
-${userFeedback ? `User Feedback: ${userFeedback}` : ''}
+${userFeedback ? `User Feedback: ${userFeedback}` : ""}
 
 Provide 5-7 key insights about:
 1. Strongest arguments presented
@@ -337,33 +383,35 @@ Format as a numbered list of concise insights.`;
         prompt,
         providerOptions: {
           groq: {
-            reasoningFormat: 'parsed',
-            reasoningEffort: 'default',
+            reasoningFormat: "parsed",
+            reasoningEffort: "default",
             parallelToolCalls: true,
-            serviceTier: 'flex'
-          }
+            serviceTier: "flex",
+          },
         },
         temperature: 0.6,
       });
 
       // Parse the numbered list into an array
       const insights = result.text
-        .split('\n')
-        .filter(line => /^\d+\./.test(line.trim()))
-        .map(line => line.replace(/^\d+\.\s*/, '').trim())
-        .filter(insight => insight.length > 0);
+        .split("\n")
+        .filter((line) => /^\d+\./.test(line.trim()))
+        .map((line) => line.replace(/^\d+\.\s*/, "").trim())
+        .filter((insight) => insight.length > 0);
 
-      return insights.length > 0 ? insights : [
-        'Multiple perspectives were presented with varying degrees of evidence.',
-        'Further analysis may be needed to reach definitive conclusions.',
-        'The debate highlighted important considerations for decision-making.'
-      ];
+      return insights.length > 0
+        ? insights
+        : [
+            "Multiple perspectives were presented with varying degrees of evidence.",
+            "Further analysis may be needed to reach definitive conclusions.",
+            "The debate highlighted important considerations for decision-making.",
+          ];
     } catch (error) {
-      console.error('Error generating insights:', error);
+      console.error("Error generating insights:", error);
       return [
-        'Analysis completed with multiple agent perspectives.',
-        'Various arguments and evidence were presented.',
-        'Further review of the responses may provide additional insights.'
+        "Analysis completed with multiple agent perspectives.",
+        "Various arguments and evidence were presented.",
+        "Further review of the responses may provide additional insights.",
       ];
     }
   }

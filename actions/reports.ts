@@ -35,6 +35,204 @@ export interface GeneratePDFResult {
   error?: string;
 }
 
+export interface SaveRegenerationReportResult {
+  success: boolean;
+  data?: {
+    reportId: string;
+    content: string;
+  };
+  error?: string;
+}
+
+/**
+ * Save current flow state before regeneration
+ */
+export async function saveFlowStateSnapshot(
+  sessionId: string,
+  nodes: any[],
+  edges: any[],
+  validationResults: any[],
+  iterationCount: number
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const supabase = await createClient();
+
+    // Get user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: "Authentication required" };
+    }
+
+    const timestamp = new Date().toISOString();
+    
+    const snapshotContent = {
+      sessionId,
+      iterationCount,
+      timestamp,
+      flowState: {
+        nodes: nodes.map(node => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: node.data
+        })),
+        edges: edges.map(edge => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          animated: edge.animated,
+          type: edge.type
+        })),
+        validationResults,
+        nodeCount: nodes.length,
+        edgeCount: edges.length,
+        validationCount: validationResults.length
+      }
+    };
+
+    // Save flow state snapshot as a report
+    const { data: savedSnapshot, error: saveError } = await supabase
+      .from("reports")
+      .insert({
+        session_id: sessionId,
+        user_id: user.id,
+        title: `Flow State Snapshot - Pre-Regeneration ${iterationCount}`,
+        content: JSON.stringify(snapshotContent, null, 2),
+        summary: `Flow state preserved before regeneration. ${nodes.length} nodes, ${edges.length} edges, ${validationResults.length} validation results.`,
+        report_type: "SNAPSHOT",
+        status: "COMPLETED",
+        completed_at: timestamp,
+        recommendations: {
+          purpose: "Pre-regeneration flow state preservation",
+          iteration: iterationCount,
+          preservedElements: {
+            nodes: nodes.length,
+            edges: edges.length,
+            validations: validationResults.length
+          }
+        }
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving flow state snapshot:', saveError);
+      return { success: false, error: "Failed to save flow state snapshot" };
+    }
+
+    return {
+      success: true,
+      data: {
+        snapshotId: savedSnapshot.id,
+        content: JSON.stringify(snapshotContent, null, 2)
+      }
+    };
+  } catch (error) {
+    console.error("Error saving flow state snapshot:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}
+
+/**
+ * Save a regeneration report to track automated flow regenerations
+ */
+export async function saveRegenerationReport(
+  sessionId: string,
+  originalQuestion: string,
+  validationData: any[],
+  contextData: any,
+  iterationCount: number
+): Promise<SaveRegenerationReportResult> {
+  try {
+    const supabase = await createClient();
+
+    // Get user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: "Authentication required" };
+    }
+
+    // Generate report content
+    const validCount = validationData.filter(r => r.isValid).length;
+    const avgConfidence = validationData.reduce((sum, r) => sum + r.confidence, 0) / validationData.length;
+    const timestamp = new Date().toISOString();
+    
+    const reportContent = {
+      type: 'regeneration_report',
+      timestamp,
+      iteration: iterationCount,
+      originalQuestion,
+      validationSummary: {
+        totalClaims: validationData.length,
+        validClaims: validCount,
+        averageConfidence: avgConfidence,
+        validationRate: (validCount / validationData.length) * 100
+      },
+      contextUpdates: contextData.contextUpdates,
+      additionalInstructions: contextData.additionalInstructions,
+      keptPoints: contextData.keptPoints?.length || 0,
+      removedPoints: contextData.removedPoints?.length || 0,
+      validationDetails: validationData.map(v => ({
+        claim: v.claim,
+        evidence: v.evidence,
+        isValid: v.isValid,
+        confidence: v.confidence,
+        logicalFallacies: v.logicalFallacies || []
+      }))
+    };
+
+    // Save to reports table
+    const { data: savedReport, error: saveError } = await supabase
+      .from("reports")
+      .insert({
+        session_id: sessionId,
+        user_id: user.id,
+        title: `Automated Regeneration Report - Iteration ${iterationCount}`,
+        content: JSON.stringify(reportContent, null, 2),
+        summary: `Automated flow regeneration completed. ${validCount}/${validationData.length} claims validated with ${avgConfidence.toFixed(1)}% average confidence.`,
+        report_type: "INTERIM",
+        status: "COMPLETED",
+        completed_at: timestamp,
+        recommendations: {
+          improvements: contextData.additionalInstructions,
+          nextSteps: `Continue with iteration ${iterationCount + 1} based on validation feedback.`,
+          confidence_threshold: 70,
+          validation_rate: (validCount / validationData.length) * 100
+        }
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving regeneration report:', saveError);
+      return { success: false, error: "Failed to save regeneration report" };
+    }
+
+    return {
+      success: true,
+      data: {
+        reportId: savedReport.id,
+        content: JSON.stringify(reportContent, null, 2)
+      }
+    };
+  } catch (error) {
+    console.error("Error saving regeneration report:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+}
+
 /**
  * Generate a text report for a debate session
  */
