@@ -53,7 +53,7 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
 
   const session = sessionResult.data;
   const rounds = roundsResult.success ? roundsResult.data || [] : [];
-  
+
   // Type the session agents result properly
   type SessionAgentWithAgent = {
     id: string;
@@ -70,7 +70,7 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
   };
 
   const sessionAgents = agentsResult.success ? (agentsResult.data as SessionAgentWithAgent[] || []) : [];
-  
+
   // Extract agent data from sessionAgents
   const agents = sessionAgents.filter(sa => sa.agents).map(sa => ({
     id: sa.agents!.id,
@@ -137,33 +137,7 @@ async function DebateContent({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="h-screen flex flex-col">
-      <div className="flex items-center gap-4 p-6 border-b">
-        <Button variant="outline" size="icon" asChild>
-          <Link href={`/dashboard/sessions/${session.id}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">Active Flow</h1>
-          <p className="text-muted-foreground">
-            {session.title || session.rounds?.[0]?.query}
-          </p>
-        </div>
-        
-        {/* Display assigned agents */}
-        {agents.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Assigned Agents:</span>
-            <div className="flex gap-2">
-              {agents.map((agent) => (
-                <Badge key={agent.id} variant="secondary">
-                  {agent.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+
 
       <div className="flex-1">
         <FlowVisualization agents={agents} sessionId={sessionId} />

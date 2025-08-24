@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
     // Get request body
     const { planId, interval, amount, userId } = await request.json();
 
+    console.log('Creating subscription with request data:', { planId, interval, amount, userId });
+
     // Validate request
     if (!planId || !interval || !amount || !userId) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -107,11 +109,11 @@ export async function POST(request: NextRequest) {
 
     // ✅ Use userRecord.id for foreign key
 
-    // Check if user already has a subscription
+    // Check if user already has a subscription using the correct user_id
     const { data: existingSubscription, error: fetchError } = await supabase
       .from("user_subscriptions")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", userRecord.id) // Use userRecord.id instead of userId
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
@@ -121,27 +123,34 @@ export async function POST(request: NextRequest) {
     }
 
     let dbResult;
+    let subscriptionRecord;
 
     if (existingSubscription) {
-      // Update existing subscription
+      // Update existing subscription - but keep it as PENDING until payment verification
       dbResult = await supabase
         .from("user_subscriptions")
         .update({
-          plan: "PREMIUM",
+          plan: "FREE", // Keep as FREE until payment is verified
           status: "ACTIVE",
           expires_at: getExpirationDate(interval).toISOString(),
           razorpay_payment_id: subscription.id, // Store Razorpay subscription ID here
         })
-        .eq("user_id", userRecord.id);
+        .eq("user_id", userRecord.id)
+        .select("*")
+        .single();
+      subscriptionRecord = dbResult.data;
     } else {
-      // Create new subscription
+      // Create new subscription - but keep it as FREE until payment verification
       dbResult = await supabase.from("user_subscriptions").insert({
         user_id: userRecord.id,
-        plan: "PREMIUM",
+        plan: "FREE", // Keep as FREE until payment is verified
         status: "ACTIVE",
         expires_at: getExpirationDate(interval).toISOString(),
         razorpay_payment_id: subscription.id, // Store Razorpay subscription ID here
-      });
+      })
+      .select("*")
+      .single();
+      subscriptionRecord = dbResult.data;
     }
 
     if (dbResult.error) {
@@ -149,7 +158,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to store subscription" }, { status: 500 });
     }
 
-    // Return the subscription details
+    console.log('Subscription created successfully:', {
+      dbSubscriptionId: subscriptionRecord?.id,
+      razorpaySubscriptionId: subscription.id,
+      userId: userRecord.id,
+      plan: 'FREE (pending payment verification)'
+    });
+
+    // Return the subscription details with database subscription ID
     return NextResponse.json({
       success: true,
       razorpaySubscription: {
@@ -158,6 +174,7 @@ export async function POST(request: NextRequest) {
         amount: amount * 100, // in paise
         currency: "INR",
         status: subscription.status,
+        dbSubscriptionId: subscriptionRecord?.id, // Include database subscription ID for verification
       },
     });
   } catch (error: any) {

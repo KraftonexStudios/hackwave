@@ -58,11 +58,12 @@ export async function POST(request: NextRequest) {
       subscription = { status: 'active' };
     }
 
-    // Update subscription in database
+    // Update subscription in database - upgrade to PREMIUM after successful payment
     const supabase = await createClient();
     const { error } = await supabase
       .from('user_subscriptions')
       .update({
+        plan: 'PREMIUM', // Upgrade to PREMIUM after successful payment
         status: subscription.status === 'active' ? 'ACTIVE' : 'EXPIRED',
         razorpay_payment_id: razorpay_payment_id,
       })
@@ -84,10 +85,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (subscriptionData) {
+      console.log('Updating user subscription status:', {
+        userId: subscriptionData.user_id,
+        plan: 'PREMIUM',
+        status: subscription.status === 'active' ? 'ACTIVE' : 'EXPIRED'
+      });
+      
       const { error: userUpdateError } = await supabase
         .from('users')
         .update({
-          subscription_plan: subscriptionData.plan,
+          subscription_plan: 'PREMIUM', // Always set to PREMIUM after successful payment
           subscription_status: subscription.status === 'active' ? 'ACTIVE' : 'EXPIRED',
           subscription_id: subscription_id,
           updated_at: new Date().toISOString(),
@@ -96,7 +103,13 @@ export async function POST(request: NextRequest) {
 
       if (userUpdateError) {
         console.error('User update error:', userUpdateError);
+        return NextResponse.json(
+          { error: 'Failed to update user subscription status' },
+          { status: 500 }
+        );
       }
+      
+      console.log('User subscription status updated successfully');
     }
 
     // Return success

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Agent, TablesInsert, TablesUpdate } from "@/database.types";
+import { canCreateAgent, getUserSubscription } from "@/lib/subscription";
 
 // Types for form data
 export interface CreateAgentData {
@@ -85,6 +86,26 @@ export async function createAgent(
     }
 
     const supabase = await createClient();
+
+    // Check subscription limits before creating agent
+    const subscription = await getUserSubscription(userId);
+    const canCreate = await canCreateAgent(userId);
+    
+    if (!canCreate.canCreate) {
+      // If user is on free plan and has reached limit, return error with redirect flag
+      if (!subscription?.isPremium && canCreate.currentCount >= 4) {
+        return {
+          success: false,
+          error: "Agent limit reached. Upgrade to Pro for unlimited agents.",
+          data: { shouldRedirect: true, redirectUrl: "/checkout" },
+        };
+      }
+      
+      return {
+        success: false,
+        error: "Cannot create more agents. Please check your subscription.",
+      };
+    }
 
     const agentData: TablesInsert<"agents"> = {
       name: data.name.trim(),

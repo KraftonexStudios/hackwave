@@ -54,7 +54,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
     const keptCount = response.points.filter(p => p.isKept).length;
     const totalCount = response.points.length;
     const keepRate = totalCount > 0 ? (keptCount / totalCount) * 100 : 0;
-    const avgConfidence = response.points.length > 0 ? 
+    const avgConfidence = response.points.length > 0 ?
       response.points.reduce((sum, p) => sum + (p.confidence || 0), 0) / response.points.length : 0;
     return { keptCount, totalCount, keepRate, avgConfidence };
   };
@@ -257,7 +257,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
                     <div className="col-span-3">Feedback</div>
                   </div>
                 </div>
-                
+
                 {responses.map((response) => (
                   <div key={response.id} className="border-b last:border-b-0">
                     {response.points.map((point, pointIndex) => (
@@ -278,7 +278,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
                         ) : (
                           <div className="col-span-2"></div>
                         )}
-                        
+
                         {/* Key Point */}
                         <div className="col-span-6 space-y-2">
                           <div className="flex items-start gap-2">
@@ -305,7 +305,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
                             )}
                           </div>
                         </div>
-                        
+
                         {/* Checkbox */}
                         <div className="col-span-1 flex justify-center items-start pt-1">
                           <Checkbox
@@ -317,7 +317,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
                             className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
                           />
                         </div>
-                        
+
                         {/* Point Feedback */}
                         <div className="col-span-3">
                           <Textarea
@@ -329,7 +329,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
                         </div>
                       </div>
                     ))}
-                    
+
                     {/* Agent Overall Feedback Row */}
                     <div className="grid grid-cols-12 gap-4 p-4 bg-muted/20 border-t">
                       <div className="col-span-2 flex items-center">
@@ -349,7 +349,7 @@ export function ValidatorTableNode({ data }: { data: ValidatorTableNodeData }) {
               </div>
             </div>
           )}
-          
+
           {/* Global Suggestion Box - Full Width */}
           {responses.length > 0 && (
             <div className="mt-6 border-2 border-dashed border-primary/30 rounded-lg p-4 bg-primary/5">
