@@ -339,7 +339,7 @@ export function UserInteractionForm({
                                             <div>
                                                 <h3 className="font-medium text-sm">Search Engine Agent</h3>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Uses Puppeteer to scrape web data and format results for analysis
+                                                    Uses ScraperAPI to scrape web data and format results for analysis
                                                 </p>
                                             </div>
                                         </div>

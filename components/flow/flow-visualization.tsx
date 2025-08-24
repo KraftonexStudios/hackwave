@@ -454,6 +454,24 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                               return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
                             });
                           });
+                          
+                          // Connect all existing system agents to validator
+                          const systemAgentIds = ['search-engine', 'chart-agent', 'proscons-agent', 'global-visualizer'];
+                          systemAgentIds.forEach(agentId => {
+                            if (streamingNodes.has(agentId)) {
+                              const validatorEdge = {
+                                id: `${agentId}-validator`,
+                                source: agentId,
+                                target: 'validator',
+                                animated: true
+                              };
+                              streamingEdges.set(validatorEdge.id, validatorEdge);
+                              setEdges(prevEdges => {
+                                const edgeExists = prevEdges.some(e => e.id === validatorEdge.id);
+                                return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
+                              });
+                            }
+                          });
                         } else if (newNode.id === 'search-engine') {
                           // Connect start node to search engine agent
                           const searchEngineEdge = {
@@ -464,6 +482,18 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                           };
                           streamingEdges.set(searchEngineEdge.id, searchEngineEdge);
                           setEdges(prevEdges => [...prevEdges, searchEngineEdge]);
+                          
+                          // Connect search engine to validator if validator exists
+                          if (streamingNodes.has('validator')) {
+                            const validatorEdge = {
+                              id: 'search-engine-validator',
+                              source: 'search-engine',
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                          }
                         } else if (newNode.id === 'chart-agent') {
                           // Connect start node to chart agent
                           const chartAgentEdge = {
@@ -474,6 +504,18 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                           };
                           streamingEdges.set(chartAgentEdge.id, chartAgentEdge);
                           setEdges(prevEdges => [...prevEdges, chartAgentEdge]);
+                          
+                          // Connect chart agent to validator if validator exists
+                          if (streamingNodes.has('validator')) {
+                            const validatorEdge = {
+                              id: 'chart-agent-validator',
+                              source: 'chart-agent',
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                          }
                         } else if (newNode.id === 'proscons-agent') {
                           // Connect start node to pros/cons agent
                           const prosConsAgentEdge = {
@@ -484,6 +526,18 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                           };
                           streamingEdges.set(prosConsAgentEdge.id, prosConsAgentEdge);
                           setEdges(prevEdges => [...prevEdges, prosConsAgentEdge]);
+                          
+                          // Connect pros/cons agent to validator if validator exists
+                          if (streamingNodes.has('validator')) {
+                            const validatorEdge = {
+                              id: 'proscons-agent-validator',
+                              source: 'proscons-agent',
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                          }
                         } else if (newNode.id === 'global-visualizer') {
                           // Connect start node to global visualizer
                           const globalVisualizerEdge = {
@@ -494,6 +548,18 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                           };
                           streamingEdges.set(globalVisualizerEdge.id, globalVisualizerEdge);
                           setEdges(prevEdges => [...prevEdges, globalVisualizerEdge]);
+                          
+                          // Connect global visualizer to validator if validator exists
+                          if (streamingNodes.has('validator')) {
+                            const validatorEdge = {
+                              id: 'global-visualizer-validator',
+                              source: 'global-visualizer',
+                              target: 'validator',
+                              animated: true
+                            };
+                            streamingEdges.set(validatorEdge.id, validatorEdge);
+                            setEdges(prevEdges => [...prevEdges, validatorEdge]);
+                          }
                         }
                         break;
 
@@ -989,11 +1055,19 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
 
                 case 'node_updated':
                   const { id, updates } = eventData.data;
-                  setNodes(prevNodes =>
-                    prevNodes.map(node =>
-                      node.id === id ? { ...node, ...updates } : node
-                    )
-                  );
+                  console.log('🔄 Node update received:', { id, updates });
+                  setNodes(prevNodes => {
+                    const updatedNodes = prevNodes.map(node => {
+                      if (node.id === id) {
+                        const updatedNode = { ...node, ...updates };
+                        console.log('📝 Node before update:', node);
+                        console.log('✨ Node after update:', updatedNode);
+                        return updatedNode;
+                      }
+                      return node;
+                    });
+                    return updatedNodes;
+                  });
 
                   if (id.startsWith('agent-') && updates.data?.status === 'completed') {
                     completedAgents++;
@@ -1213,6 +1287,20 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
           });
         });
       }
+
+      // Connect system agents to validator if they exist
+      const systemAgentIds = ['search-engine', 'chart-agent', 'proscons-agent', 'global-visualizer'];
+      systemAgentIds.forEach(agentId => {
+        const systemAgentExists = newNodes.some(node => node.id === agentId);
+        if (systemAgentExists) {
+          newEdges.push({
+            id: `${agentId}-validator`,
+            source: agentId,
+            target: 'validator',
+            animated: true
+          });
+        }
+      });
 
       // Store validation results and add validator table node
       setValidationResults(processingData?.validationResults || []);
@@ -1851,7 +1939,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                                 Search Engine Agent
                               </label>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Scrapes web results using Puppeteer and formats them with AI for enhanced debate context.
+                                Scrapes web results using ScraperAPI and formats them with AI for enhanced debate context.
                               </p>
                               <div className="flex items-center gap-2 mt-2">
                                 <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">

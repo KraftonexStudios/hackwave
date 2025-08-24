@@ -39,6 +39,16 @@ const getSourceInitials = (source: string) => {
 
 export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
   const displayResults = data.results?.slice(0, 5) || [];
+  
+  // Debug logging
+  console.log('🔍 SearchEngineNode render:', {
+    query: data.query,
+    resultsCount: data.results?.length || 0,
+    isLoading: data.isLoading,
+    totalResults: data.totalResults,
+    processingTime: data.processingTime,
+    displayResultsCount: displayResults.length
+  });
 
   return (
     <div className="w-[700px]">
@@ -83,7 +93,7 @@ export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
             <div className="flex items-center justify-center p-8">
               <div className="flex items-center space-x-2 text-muted-foreground">
                 <div className="animate-spin w-4 h-4 border border-muted border-t-primary rounded-full"></div>
-                <span className="text-sm">Scraping web results...</span>
+                <span className="text-sm">Fetching web results via ScraperAPI...</span>
               </div>
             </div>
           ) : (

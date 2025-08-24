@@ -816,6 +816,75 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
     }
   }
 
+  async generateObject<T>(options: {
+    provider: AIProvider;
+    schema: z.ZodSchema<T>;
+    prompt: string;
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<{ object: T }> {
+    try {
+      const model = this.getModel(options.provider);
+
+      // For Groq, use text generation with JSON instructions since it doesn't support json_schema
+      const jsonPrompt = `${options.prompt}
+
+Please respond with a valid JSON object that matches this EXACT structure. Return ONLY the JSON object, no additional text or formatting:
+
+{
+  "formattedResults": [
+    {
+      "title": "string",
+      "url": "string", 
+      "snippet": "string (max 150 chars)",
+      "source": "string",
+      "relevanceScore": 0.9
+    }
+  ]
+}
+
+IMPORTANT: Use "formattedResults" as the array field name, not "results". Ensure all required fields are included with proper JSON syntax.`;
+
+      const result = await generateText({
+        model,
+        prompt: jsonPrompt,
+        temperature: options.temperature || 0.7,
+        maxTokens: options.maxTokens || 2000,
+      });
+
+      // Parse the JSON response
+      let parsedObject: T;
+      try {
+        // Clean the response text to extract JSON
+        let jsonText = result.text.trim();
+        
+        // Remove markdown code blocks if present
+        if (jsonText.startsWith('```json')) {
+          jsonText = jsonText.replace(/```json\n?/, '').replace(/\n?```$/, '');
+        } else if (jsonText.startsWith('```')) {
+          jsonText = jsonText.replace(/```\n?/, '').replace(/\n?```$/, '');
+        }
+        
+        parsedObject = JSON.parse(jsonText);
+        
+        // Validate against schema
+        const validatedObject = options.schema.parse(parsedObject);
+        return { object: validatedObject };
+      } catch (parseError) {
+        console.error("JSON parsing error:", parseError);
+        console.error("Raw response:", result.text);
+        throw new Error(`Failed to parse JSON response: ${parseError instanceof Error ? parseError.message : "Unknown parsing error"}`);
+      }
+    } catch (error) {
+      console.error("Error in generateObject:", error);
+      throw new Error(
+        `Failed to generate object: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
   async generateInsights(
     responses: AgentResponse[],
     validationResults: ValidationResult[],

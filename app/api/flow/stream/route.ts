@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { unifiedAIClient } from "@/lib/ai/unified-client";
 import { generateChartData } from "@/app/api/charts/route";
 import { generateProsConsAnalysis } from "@/app/api/proscons/route";
-import { performWebSearch } from "@/app/api/search/playwright/route";
+import { SearchEngineAgent } from "@/lib/ai/agents";
 import type {
   AgentResponse,
   ValidationResult,
@@ -82,9 +82,19 @@ export async function POST(request: NextRequest) {
     // Create a readable stream for Server-Sent Events
     const stream = new ReadableStream({
       async start(controller) {
+        let controllerClosed = false;
         const sendEvent = (event: StreamEvent) => {
-          const data = `data: ${JSON.stringify(event)}\n\n`;
-          controller.enqueue(new TextEncoder().encode(data));
+          if (controllerClosed) {
+            console.warn('⚠️ Attempted to send event after controller closed:', event.type);
+            return;
+          }
+          try {
+            const data = `data: ${JSON.stringify(event)}\n\n`;
+            controller.enqueue(new TextEncoder().encode(data));
+          } catch (error) {
+            console.error('❌ Error sending event:', error);
+            controllerClosed = true;
+          }
         };
 
         try {
@@ -160,7 +170,10 @@ export async function POST(request: NextRequest) {
           let chartAgentData: any = null;
           let prosConsAgentData: any = null;
 
-          // Step 3.5: Add search engine node if enabled
+          // Step 3.5-3.7: Add system agent nodes and process in parallel
+          const systemAgentPromises = [];
+
+          // Add search engine node if enabled
           if (enabledSystemAgents?.includes("search-engine")) {
             sendEvent({
               type: "node_added",
@@ -178,79 +191,89 @@ export async function POST(request: NextRequest) {
               timestamp: new Date().toISOString(),
             });
 
-            // Process search engine request
-            try {
-              console.log(
-                "Flow stream - Performing web search directly for query:",
-                query
-              );
+            // Add search engine processing to parallel promises
+            systemAgentPromises.push(
+              (async () => {
+                try {
+                  console.log(
+                    "Flow stream - Performing web search using SearchEngineAgent for query:",
+                    query
+                  );
 
-              // Call search function directly
-              const searchData = await performWebSearch(query);
+                  // Use SearchEngineAgent class
+                  const searchAgent = new SearchEngineAgent(AI_PROVIDER);
+                  const searchResult = await searchAgent.searchAndFormat(query);
 
-              if (searchData.success) {
-                searchEngineData = searchData; // Store for validator
+                  if (searchResult.success && searchResult.data) {
+                    searchEngineData = searchResult.data; // Store for validator
 
-                // Update search engine node with results
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "search-engine",
-                    type: "searchEngine",
-                    position: { x: 600, y: 150 },
-                    data: {
-                      query: query,
-                      results: searchData.results || [],
+                    // Update search engine node with results
+                    console.log('🔄 Sending search engine node update with results:', {
+                      resultsCount: searchResult.data.results?.length || 0,
+                      totalResults: searchResult.data.totalResults,
+                      processingTime: searchResult.data.processingTime
+                    });
+                    sendEvent({
+                      type: "node_updated",
+                      data: {
+                        id: "search-engine",
+                        updates: {
+                          data: {
+                            query: query,
+                            results: searchResult.data.results || [],
+                            timestamp: searchResult.data.timestamp,
+                            totalResults: searchResult.data.totalResults,
+                            processingTime: searchResult.data.processingTime,
+                            isLoading: false,
+                          },
+                        },
+                      },
                       timestamp: new Date().toISOString(),
-                      totalResults: searchData.totalResults,
-                      processingTime: searchData.processingTime,
-                      isLoading: false,
-                    },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              } else {
-                // Handle error response
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "search-engine",
-                    type: "searchEngine",
-                    position: { x: 600, y: 150 },
-                    data: {
-                      query: query,
-                      results: [],
+                    });
+                  } else {
+                    // Handle error response
+                    sendEvent({
+                      type: "node_updated",
+                      data: {
+                        id: "search-engine",
+                        updates: {
+                          data: {
+                            query: query,
+                            results: [],
+                            timestamp: new Date().toISOString(),
+                            isLoading: false,
+                            error: searchResult.error || "Search failed",
+                          },
+                        },
+                      },
                       timestamp: new Date().toISOString(),
-                      isLoading: false,
-                      error: searchData.error || "Search failed",
+                    });
+                  }
+                } catch (searchError) {
+                  console.error("Search engine error:", searchError);
+                  // Update with error state
+                  sendEvent({
+                    type: "node_updated",
+                    data: {
+                      id: "search-engine",
+                      updates: {
+                        data: {
+                          query: query,
+                          results: [],
+                          timestamp: new Date().toISOString(),
+                          isLoading: false,
+                          error: searchError instanceof Error ? searchError.message : "Search engine unavailable",
+                        },
+                      },
                     },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            } catch (searchError) {
-              console.error("Search engine error:", searchError);
-              // Update with error state
-              sendEvent({
-                type: "node_updated",
-                data: {
-                  id: "search-engine",
-                  type: "searchEngine",
-                  position: { x: 600, y: 150 },
-                  data: {
-                    query: query,
-                    results: [],
                     timestamp: new Date().toISOString(),
-                    isLoading: false,
-                    error: searchError instanceof Error ? searchError.message : "Search engine unavailable",
-                  },
-                },
-                timestamp: new Date().toISOString(),
-              });
-            }
+                  });
+                }
+              })()
+            );
           }
 
-          // Step 3.6: Add chart agent node if enabled
+          // Add chart agent node if enabled
           if (enabledSystemAgents?.includes("chart-agent")) {
             sendEvent({
               type: "node_added",
@@ -272,92 +295,95 @@ export async function POST(request: NextRequest) {
               timestamp: new Date().toISOString(),
             });
 
-            // Process chart agent request
-            try {
-              console.log(
-                "Flow stream - Generating chart data directly for query:",
-                query
-              );
+            // Add chart agent processing to parallel promises
+            systemAgentPromises.push(
+              (async () => {
+                try {
+                  console.log(
+                    "Flow stream - Generating chart data directly for query:",
+                    query
+                  );
 
-              // Call chart generation function directly
-              const chartData = await generateChartData(query, "bar");
+                  // Call chart generation function directly
+                  const chartData = await generateChartData(query, "bar");
 
-              if (chartData.success) {
-                chartAgentData = chartData; // Store for validator
+                  if (chartData.success) {
+                    chartAgentData = chartData; // Store for validator
 
-                // Update chart agent node with results
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "chart-agent",
-                    updates: {
+                    // Update chart agent node with results
+                    sendEvent({
+                      type: "node_updated",
                       data: {
-                        query: query,
-                        chartData: {
-                          type: chartData.chartType || "bar",
-                          data: chartData.data || [],
-                          mermaidCode: chartData.mermaidCode,
-                          plotlyConfig: chartData.plotlyConfig,
-                          networkData: chartData.networkData,
-                          title: chartData.title,
-                          description: chartData.description,
-                          isLoading: false,
-                          error: null,
+                        id: "chart-agent",
+                        updates: {
+                          data: {
+                            id: "chart-agent",
+                            query: query,
+                            chartType: chartData.chartType || "bar",
+                            data: chartData.data || [],
+                            mermaidCode: chartData.mermaidCode,
+                            plotlyConfig: chartData.plotlyConfig,
+                            networkData: chartData.networkData,
+                            title: chartData.title,
+                            description: chartData.description,
+                            isLoading: false,
+                            error: null,
+                            timestamp: chartData.timestamp,
+                            processingTime: chartData.processingTime,
+                            status: "completed",
+                          },
                         },
-                        status: "completed",
                       },
-                    },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              } else {
-                // Handle error response
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "chart-agent",
-                    updates: {
+                      timestamp: new Date().toISOString(),
+                    });
+                  } else {
+                    // Handle error response
+                    sendEvent({
+                      type: "node_updated",
                       data: {
-                        query: query,
-                        chartData: {
-                          type: "bar",
+                        id: "chart-agent",
+                        updates: {
+                          data: {
+                            id: "chart-agent",
+                            query: query,
+                            chartType: "bar",
+                            data: [],
+                            isLoading: false,
+                            error: chartData.error || "Chart generation failed",
+                            status: "error",
+                          },
+                        },
+                      },
+                      timestamp: new Date().toISOString(),
+                    });
+                  }
+                } catch (chartError) {
+                  console.error("Chart agent error:", chartError);
+                  // Update with error state
+                  sendEvent({
+                    type: "node_updated",
+                    data: {
+                      id: "chart-agent",
+                      updates: {
+                        data: {
+                          id: "chart-agent",
+                          query: query,
+                          chartType: "bar",
                           data: [],
                           isLoading: false,
-                          error: chartData.error || "Chart generation failed",
+                          error: "Chart agent unavailable",
+                          status: "error",
                         },
-                        status: "error",
                       },
                     },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            } catch (chartError) {
-              console.error("Chart agent error:", chartError);
-              // Update with error state
-              sendEvent({
-                type: "node_updated",
-                data: {
-                  id: "chart-agent",
-                  updates: {
-                    data: {
-                      query: query,
-                      chartData: {
-                        type: "bar",
-                        data: [],
-                        isLoading: false,
-                        error: "Chart agent unavailable",
-                      },
-                      status: "error",
-                    },
-                  },
-                },
-                timestamp: new Date().toISOString(),
-              });
-            }
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              })()
+            );
           }
 
-          // Step 3.7: Add pros/cons agent node if enabled
+          // Add pros/cons agent node if enabled
           if (enabledSystemAgents?.includes("proscons-agent")) {
             sendEvent({
               type: "node_added",
@@ -381,100 +407,105 @@ export async function POST(request: NextRequest) {
               timestamp: new Date().toISOString(),
             });
 
-            // Process pros/cons agent request
-            try {
-              console.log(
-                "Flow stream - Generating pros/cons analysis directly for query:",
-                query
-              );
+            // Add pros/cons agent processing to parallel promises
+            systemAgentPromises.push(
+              (async () => {
+                try {
+                  console.log(
+                    "Flow stream - Generating pros/cons analysis directly for query:",
+                    query
+                  );
 
-              // Call pros/cons generation function directly
-              const prosConsData = await generateProsConsAnalysis(query);
+                  // Call pros/cons generation function directly
+                  const prosConsData = await generateProsConsAnalysis(query);
 
-              if (prosConsData.success) {
-                prosConsAgentData = prosConsData; // Store for validator
+                  if (prosConsData.success) {
+                    prosConsAgentData = prosConsData; // Store for validator
 
-                // Update pros/cons agent node with results
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "proscons-agent",
-                    updates: {
+                    // Update pros/cons agent node with results
+                    sendEvent({
+                      type: "node_updated",
                       data: {
-                        query: query,
-                        prosConsData: {
-                          pros: prosConsData.pros,
-                          cons: prosConsData.cons,
-                          summary: prosConsData.summary,
-                          recommendation: prosConsData.recommendation,
-                          isLoading: false,
-                          error: null,
+                        id: "proscons-agent",
+                        updates: {
+                          data: {
+                            id: "proscons-agent",
+                            query: query,
+                            pros: prosConsData.pros,
+                            cons: prosConsData.cons,
+                            summary: prosConsData.summary,
+                            recommendation: prosConsData.recommendation,
+                            isLoading: false,
+                            error: null,
+                            timestamp: prosConsData.timestamp,
+                            processingTime: prosConsData.processingTime,
+                            status: "completed",
+                          },
                         },
-                        status: "completed",
                       },
-                    },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              } else {
-                // Handle error response
-                sendEvent({
-                  type: "node_updated",
-                  data: {
-                    id: "proscons-agent",
-                    updates: {
+                      timestamp: new Date().toISOString(),
+                    });
+                  } else {
+                    // Handle error response
+                    sendEvent({
+                      type: "node_updated",
                       data: {
-                        query: query,
-                        prosConsData: {
+                        id: "proscons-agent",
+                        updates: {
+                          data: {
+                            id: "proscons-agent",
+                            query: query,
+                            pros: [],
+                            cons: [],
+                            summary: "",
+                            recommendation: "",
+                            isLoading: false,
+                            error: prosConsData.error || "Pros/cons analysis failed",
+                            status: "error",
+                          },
+                        },
+                      },
+                      timestamp: new Date().toISOString(),
+                    });
+                  }
+                } catch (prosConsError) {
+                  console.error("Pros/cons agent error:", prosConsError);
+                  // Update with error state
+                  sendEvent({
+                    type: "node_updated",
+                    data: {
+                      id: "proscons-agent",
+                      updates: {
+                        data: {
+                          id: "proscons-agent",
+                          query: query,
                           pros: [],
                           cons: [],
                           summary: "",
                           recommendation: "",
                           isLoading: false,
-                          error:
-                            prosConsData.error || "Pros/cons analysis failed",
+                          error: "Pros/cons agent unavailable",
+                          status: "error",
                         },
-                        status: "error",
                       },
                     },
-                  },
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            } catch (prosConsError) {
-              console.error("Pros/cons agent error:", prosConsError);
-              // Update with error state
-              sendEvent({
-                type: "node_updated",
-                data: {
-                  id: "proscons-agent",
-                  updates: {
-                    data: {
-                      query: query,
-                      prosConsData: {
-                        pros: [],
-                        cons: [],
-                        summary: "",
-                        recommendation: "",
-                        isLoading: false,
-                        error: "Pros/cons agent unavailable",
-                      },
-                      status: "error",
-                    },
-                  },
-                },
-                timestamp: new Date().toISOString(),
-              });
-            }
+                    timestamp: new Date().toISOString(),
+                  });
+                }
+              })()
+            );
           }
 
-          // Step 4: Add agent nodes and start processing
+          // Wait for all system agents to complete in parallel
+          if (systemAgentPromises.length > 0) {
+            await Promise.all(systemAgentPromises);
+          }
+
+          // Step 4: Add agent nodes and start parallel processing
           const agentResponses: AgentResponse[] = [];
 
-          for (let index = 0; index < agents.length; index++) {
-            const agent = agents[index];
-
-            // Add agent node
+          // Add all agent nodes first
+          agents.forEach((agent, index) => {
             sendEvent({
               type: "node_added",
               data: {
@@ -501,15 +532,17 @@ export async function POST(request: NextRequest) {
               },
               timestamp: new Date().toISOString(),
             });
+          });
 
-            // Generate agent response with streaming
+          // Process all agents in parallel
+          const agentPromises = agents.map(async (agent, index) => {
             try {
+              // Generate agent response with streaming
               const response = await generateAgentResponseStreaming(
                 agent,
                 query,
                 sendEvent
               );
-              agentResponses.push(response);
 
               // Split response into points for progressive display
               const responsePoints = response.response
@@ -603,6 +636,8 @@ export async function POST(request: NextRequest) {
                 },
                 timestamp: new Date().toISOString(),
               });
+
+              return response;
             } catch (error) {
               console.error(
                 `Error generating response for ${agent.name}:`,
@@ -621,7 +656,6 @@ export async function POST(request: NextRequest) {
                 reasoning: [],
                 evidence: [],
               };
-              agentResponses.push(errorResponse);
 
               sendEvent({
                 type: "agent_response",
@@ -631,11 +665,14 @@ export async function POST(request: NextRequest) {
                 },
                 timestamp: new Date().toISOString(),
               });
-            }
 
-            // Add a small delay between agents for better UX
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
+              return errorResponse;
+            }
+          });
+
+          // Wait for all agents to complete processing in parallel
+          const responses = await Promise.all(agentPromises);
+          agentResponses.push(...responses);
 
           // Step 5: Add validator node
           sendEvent({
@@ -744,7 +781,12 @@ export async function POST(request: NextRequest) {
             timestamp: new Date().toISOString(),
           });
         } finally {
-          controller.close();
+          controllerClosed = true;
+          try {
+            controller.close();
+          } catch (error) {
+            console.warn('⚠️ Controller already closed:', error);
+          }
         }
       },
     });

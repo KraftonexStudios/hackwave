@@ -450,10 +450,10 @@ Generate a comprehensive ${reportType} report in markdown format.`;
 
 // Search Engine Agent for web scraping
 export class SearchEngineAgent {
-  private config: AIConfig;
+  private provider: string;
 
-  constructor(provider: AIProvider = "openai") {
-    this.config = defaultConfigs[provider];
+  constructor(provider: string = "groq") {
+    this.provider = provider;
   }
 
   async searchAndFormat(query: string, context?: string) {
@@ -523,41 +523,46 @@ export class SearchEngineAgent {
 
   private async performWebSearch(query: string) {
     console.log(
-      "🌐 SearchEngineAgent: Calling Playwright API for query:",
+      "🐕 SearchEngineAgent: Calling ScraperDogs search function for query:",
       query
     );
 
-    // This will call the Playwright API endpoint
-    const response = await fetch("/api/search/playwright", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-    });
+    try {
+      // Call the new ScraperDogs endpoint with absolute URL
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/search/scraperdogs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
 
-    console.log(
-      "📡 SearchEngineAgent: Puppeteer API response status:",
-      response.status
-    );
+      if (!response.ok) {
+        throw new Error(`ScraperDogs request failed: ${response.status} ${response.statusText}`);
+      }
 
-    if (!response.ok) {
+      const searchResult = await response.json();
+      
+      console.log("📦 SearchEngineAgent: Search result received:", {
+        success: searchResult.success,
+        resultsCount: searchResult.results?.length || 0,
+        totalResults: searchResult.totalResults,
+        source: searchResult.source,
+      });
+
+      if (!searchResult.success && searchResult.error) {
+        console.warn("⚠️ SearchEngineAgent: ScraperDogs returned error, but has fallback results:", searchResult.error);
+      }
+
+      return searchResult.results || [];
+    } catch (error) {
       console.error(
-        "❌ SearchEngineAgent: Puppeteer API failed with status:",
-        response.status
+        "❌ SearchEngineAgent: ScraperDogs search failed:",
+        error
       );
-      throw new Error("Web search failed");
+      throw new Error("Web search failed: " + (error instanceof Error ? error.message : 'Unknown error'));
     }
-
-    const data = await response.json();
-    console.log("📦 SearchEngineAgent: Puppeteer API data received:", {
-      success: data.success,
-      resultsCount: data.results?.length || 0,
-      totalResults: data.totalResults,
-      processingTime: data.processingTime,
-    });
-
-    return data.results || [];
   }
 
   private async formatSearchResults(results: any[], query: string) {
@@ -576,8 +581,9 @@ export class SearchEngineAgent {
       }))
     );
 
-    const model = getModel(this.config);
-
+    // Import unified client for AI operations
+    const { unifiedAIClient } = await import('@/lib/ai/unified-client');
+    
     const systemPrompt = `You are a search result formatter. Your task is to take raw web search results and format them into clean, structured data suitable for UI display.
 
 Format each result with:
@@ -590,8 +596,9 @@ Prioritize the most relevant results and ensure snippets are informative.`;
 
     try {
       console.log("🤖 SearchEngineAgent: Calling AI model for formatting...");
-      const result = await generateObject({
-        model,
+      const aiProvider = this.provider as 'groq' | 'gemini';
+      const result = await unifiedAIClient.generateObject({
+        provider: aiProvider,
         schema: z.object({
           formattedResults: z.array(
             z.object({
@@ -603,8 +610,7 @@ Prioritize the most relevant results and ensure snippets are informative.`;
             })
           ),
         }),
-        system: systemPrompt,
-        prompt: `Format these search results for query "${query}":\n\n${JSON.stringify(
+        prompt: `${systemPrompt}\n\nFormat these search results for query "${query}":\n\n${JSON.stringify(
           results.slice(0, 10),
           null,
           2

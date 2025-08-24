@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Round, Agent, Responce, ValidationReasult } from '@/';
+import { Round, Agent, Responce, ValidationResult } from '@/database.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
