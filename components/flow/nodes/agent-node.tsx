@@ -43,19 +43,29 @@ const roleLabels = {
 
 export function AgentNode({ data }: { data: AgentNodeData }) {
     const RoleIcon = roleIcons[data.role as keyof typeof roleIcons] || User;
+    const roleLabel = roleLabels[data.role as keyof typeof roleLabels] || 'Agent';
 
     return (
-        <div className="w-[120px]">
+        <div className="w-[140px]">
             <Handle type="target" position={Position.Top} className="w-3 h-3" />
 
-            <div className="flex flex-col items-center gap-2 p-3 rounded-lg bg-transparent">
-                <div className="p-2 rounded-full bg-primary/10 dark:bg-primary/20">
-                    <RoleIcon className="h-6 w-6 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-foreground dark:text-white text-center leading-tight">
-                    {data.name}
-                </span>
-            </div>
+            <Card className="border-2 shadow-md bg-white dark:bg-gray-800">
+                <CardContent className="p-4">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="p-3 rounded-full bg-primary/10 dark:bg-primary/20 border border-primary/20">
+                            <RoleIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        <div className="text-center space-y-1">
+                            <span className="text-sm font-semibold text-foreground dark:text-white block leading-tight">
+                                {data.name}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                                {roleLabel}
+                            </Badge>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
         </div>

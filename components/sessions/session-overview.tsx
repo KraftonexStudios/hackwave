@@ -216,7 +216,7 @@ export function SessionOverview({ session, agents }: SessionOverviewProps) {
                       )}
                       <div className="flex items-center gap-2 mt-2">
                         <div
-                          className={`w-2 h-2 rounded-full ${sessionAgent?.is_active ? 'bg-green-500' : 'bg-gray-400'
+                          className={`w-2 h-2 rounded-full ${sessionAgent?.is_active ? 'bg-green-500' : 'bg-muted-foreground'
                             }`}
                         />
                         <span className="text-xs text-muted-foreground">

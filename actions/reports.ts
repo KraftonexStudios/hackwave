@@ -67,30 +67,30 @@ export async function saveFlowStateSnapshot(
     }
 
     const timestamp = new Date().toISOString();
-    
+
     const snapshotContent = {
       sessionId,
       iterationCount,
       timestamp,
       flowState: {
-        nodes: nodes.map(node => ({
+        nodes: nodes.map((node) => ({
           id: node.id,
           type: node.type,
           position: node.position,
-          data: node.data
+          data: node.data,
         })),
-        edges: edges.map(edge => ({
+        edges: edges.map((edge) => ({
           id: edge.id,
           source: edge.source,
           target: edge.target,
           animated: edge.animated,
-          type: edge.type
+          type: edge.type,
         })),
         validationResults,
         nodeCount: nodes.length,
         edgeCount: edges.length,
-        validationCount: validationResults.length
-      }
+        validationCount: validationResults.length,
+      },
     };
 
     // Save flow state snapshot as a report
@@ -111,15 +111,15 @@ export async function saveFlowStateSnapshot(
           preservedElements: {
             nodes: nodes.length,
             edges: edges.length,
-            validations: validationResults.length
-          }
-        }
+            validations: validationResults.length,
+          },
+        },
       })
       .select()
       .single();
 
     if (saveError) {
-      console.error('Error saving flow state snapshot:', saveError);
+      console.error("Error saving flow state snapshot:", saveError);
       return { success: false, error: "Failed to save flow state snapshot" };
     }
 
@@ -127,8 +127,8 @@ export async function saveFlowStateSnapshot(
       success: true,
       data: {
         snapshotId: savedSnapshot.id,
-        content: JSON.stringify(snapshotContent, null, 2)
-      }
+        content: JSON.stringify(snapshotContent, null, 2),
+      },
     };
   } catch (error) {
     console.error("Error saving flow state snapshot:", error);
@@ -162,12 +162,14 @@ export async function saveRegenerationReport(
     }
 
     // Generate report content
-    const validCount = validationData.filter(r => r.isValid).length;
-    const avgConfidence = validationData.reduce((sum, r) => sum + r.confidence, 0) / validationData.length;
+    const validCount = validationData.filter((r) => r.isValid).length;
+    const avgConfidence =
+      validationData.reduce((sum, r) => sum + r.confidence, 0) /
+      validationData.length;
     const timestamp = new Date().toISOString();
-    
+
     const reportContent = {
-      type: 'regeneration_report',
+      type: "regeneration_report",
       timestamp,
       iteration: iterationCount,
       originalQuestion,
@@ -175,19 +177,19 @@ export async function saveRegenerationReport(
         totalClaims: validationData.length,
         validClaims: validCount,
         averageConfidence: avgConfidence,
-        validationRate: (validCount / validationData.length) * 100
+        validationRate: (validCount / validationData.length) * 100,
       },
       contextUpdates: contextData.contextUpdates,
       additionalInstructions: contextData.additionalInstructions,
       keptPoints: contextData.keptPoints?.length || 0,
       removedPoints: contextData.removedPoints?.length || 0,
-      validationDetails: validationData.map(v => ({
+      validationDetails: validationData.map((v) => ({
         claim: v.claim,
         evidence: v.evidence,
         isValid: v.isValid,
         confidence: v.confidence,
-        logicalFallacies: v.logicalFallacies || []
-      }))
+        logicalFallacies: v.logicalFallacies || [],
+      })),
     };
 
     // Save to reports table
@@ -198,22 +200,28 @@ export async function saveRegenerationReport(
         user_id: user.id,
         title: `Automated Regeneration Report - Iteration ${iterationCount}`,
         content: JSON.stringify(reportContent, null, 2),
-        summary: `Automated flow regeneration completed. ${validCount}/${validationData.length} claims validated with ${avgConfidence.toFixed(1)}% average confidence.`,
+        summary: `Automated flow regeneration completed. ${validCount}/${
+          validationData.length
+        } claims validated with ${avgConfidence.toFixed(
+          1
+        )}% average confidence.`,
         report_type: "INTERIM",
         status: "COMPLETED",
         completed_at: timestamp,
         recommendations: {
           improvements: contextData.additionalInstructions,
-          nextSteps: `Continue with iteration ${iterationCount + 1} based on validation feedback.`,
+          nextSteps: `Continue with iteration ${
+            iterationCount + 1
+          } based on validation feedback.`,
           confidence_threshold: 70,
-          validation_rate: (validCount / validationData.length) * 100
-        }
+          validation_rate: (validCount / validationData.length) * 100,
+        },
       })
       .select()
       .single();
 
     if (saveError) {
-      console.error('Error saving regeneration report:', saveError);
+      console.error("Error saving regeneration report:", saveError);
       return { success: false, error: "Failed to save regeneration report" };
     }
 
@@ -221,8 +229,8 @@ export async function saveRegenerationReport(
       success: true,
       data: {
         reportId: savedReport.id,
-        content: JSON.stringify(reportContent, null, 2)
-      }
+        content: JSON.stringify(reportContent, null, 2),
+      },
     };
   } catch (error) {
     console.error("Error saving regeneration report:", error);

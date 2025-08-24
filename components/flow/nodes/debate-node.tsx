@@ -78,16 +78,7 @@ export function DebateNode({ data }: { data: DebateNodeData }) {
             </div>
           </div>
 
-          {/* Progress */}
-          {data.status !== 'PENDING' && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Progress</span>
-                <span className="font-medium">{progress}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-          )}
+
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-2 text-xs">

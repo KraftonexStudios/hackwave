@@ -8,12 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  RefreshCw, 
-  CheckCircle, 
-  AlertCircle, 
-  Clock, 
-  Users, 
+import {
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Users,
   FileText,
   ArrowRight,
   History
@@ -28,11 +28,11 @@ interface FlowOrchestratorProps {
 
 type FlowStage = 'validation' | 'interaction' | 'processing' | 'completed';
 
-export function FlowOrchestrator({ 
-  initialData, 
-  onFlowRestart, 
+export function FlowOrchestrator({
+  initialData,
+  onFlowRestart,
   onCancel,
-  availableAgents 
+  availableAgents
 }: FlowOrchestratorProps) {
   const [currentStage, setCurrentStage] = useState<FlowStage>('validation');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,7 +77,7 @@ export function FlowOrchestrator({
         includeRemovedPoints: false,
         resetIterationCount: false
       });
-      
+
       setRestartConfig(config);
       setCurrentStage('completed');
 
@@ -129,16 +129,14 @@ export function FlowOrchestrator({
 
           return (
             <React.Fragment key={stage.id}>
-              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${
-                isActive 
+              <div className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-all ${isActive
                   ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
                   : isCompleted
-                  ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
-              }`}>
-                <Icon className={`h-4 w-4 ${
-                  isProcessingStage ? 'animate-spin' : ''
-                }`} />
+                    ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                }`}>
+                <Icon className={`h-4 w-4 ${isProcessingStage ? 'animate-spin' : ''
+                  }`} />
                 <span className="text-sm font-medium">{stage.label}</span>
               </div>
               {index < stages.length - 1 && (
@@ -182,10 +180,10 @@ export function FlowOrchestrator({
               <div className="text-sm text-muted-foreground">Iteration</div>
             </div>
           </div>
-          
+
           {currentContext.contextUpdates && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 rounded border-l-2 border-blue-500">
-              <h4 className="font-medium text-sm text-blue-700 dark:text-blue-400 mb-1">
+            <div className="mt-4 p-3 bg-primary/10 rounded border-l-2 border-primary">
+              <h4 className="font-medium text-sm text-primary mb-1">
                 Context Updates:
               </h4>
               <p className="text-sm text-foreground">{currentContext.contextUpdates}</p>
@@ -216,7 +214,7 @@ export function FlowOrchestrator({
                 The context has been successfully processed and the flow is ready to restart with updated parameters.
               </AlertDescription>
             </Alert>
-            
+
             <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950 rounded-lg">
               <div>
                 <h4 className="font-medium text-green-800 dark:text-green-200">
@@ -289,7 +287,7 @@ export function FlowOrchestrator({
               <p className="text-muted-foreground">
                 Review the validator responses and proceed to the interaction form.
               </p>
-              <Button 
+              <Button
                 onClick={() => handleValidationComplete(formData)}
                 className="flex items-center gap-2"
               >

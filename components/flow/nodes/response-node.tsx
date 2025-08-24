@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageSquare, ThumbsUp, ThumbsDown, Minus, Clock } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer';
 
 interface ResponseNodeData {
   agent: string;
@@ -105,40 +106,39 @@ export function ResponseNode({ data }: { data: ResponseNodeData }) {
         </CardHeader>
 
         <CardContent className="pt-0 space-y-2">
-          {/* Response Points with streaming animation */}
+          {/* Markdown Response Content */}
           <div
-            className="p-2 rounded-lg text-xs"
+            className="p-3 rounded-lg"
             style={{ backgroundColor: config.bgColor }}
           >
-            {responsePoints.length > 0 ? (
-              <ul className="space-y-1 text-foreground">
-                {responsePoints.map((point, index) => (
-                  <li
-                    key={index}
-                    className={`flex items-start gap-1 transition-opacity duration-500 ${data.isStreaming ? 'animate-fade-in' : ''
-                      }`}
-                    style={{ animationDelay: `${index * 0.3}s` }}
-                  >
-                    <span className="text-xs mt-0.5" style={{ color: config.color }}>•</span>
-                    <span className="text-xs leading-tight">{point.trim()}</span>
-                  </li>
-                ))}
-                {data.isStreaming && (
-                  <li className="flex items-start gap-1 text-gray-400 animate-pulse">
-                    <span className="inline-block w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                    <span className="text-xs leading-tight ml-1">Generating more content...</span>
-                  </li>
-                )}
-              </ul>
+            {data.response ? (
+              <div className={`transition-opacity duration-500 ${data.isStreaming ? 'animate-fade-in' : ''
+                }`}>
+                <MarkdownRenderer
+                  content={data.response}
+                  className="text-foreground"
+                />
+              </div>
             ) : (
-              <div className="flex items-center space-x-2 text-gray-400">
-                <div className="animate-spin w-3 h-3 border border-gray-300 border-t-blue-500 rounded-full"></div>
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <div className="animate-spin w-3 h-3 border border-muted border-t-primary rounded-full"></div>
                 <span className="text-xs">Generating response...</span>
+              </div>
+            )}
+
+            {data.isStreaming && (
+              <div className="flex items-center gap-2 text-gray-400 animate-pulse mt-2 pt-2 border-t border-gray-200">
+                <span className="inline-block w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                <span className="text-xs">Generating more content...</span>
               </div>
             )}
           </div>
 
-
+          {/* Confidence and Stats */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+            <span>Words: {wordCount}</span>
+            <span>Confidence: {confidence}%</span>
+          </div>
         </CardContent>
       </Card>
 

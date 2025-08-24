@@ -66,13 +66,109 @@ class UnifiedAIClient {
 8. Use rhetorical techniques appropriately (ethos, pathos, logos)
 9. Cite credible sources and acknowledge limitations
 10. Engage constructively with opposing viewpoints
+11. Create visual diagrams and charts using Mermaid syntax to illustrate complex relationships, processes, and data
+
+Visual Enhancement Guidelines:
+- Use flowcharts to show logical reasoning chains and decision processes
+- Create mind maps to illustrate argument structures and supporting evidence
+- Generate pie charts or bar charts for statistical data presentation
+- Use sequence diagrams for cause-and-effect relationships
+- Include timeline diagrams for historical context or process flows
 
 Always provide:
-- Clear reasoning chain
-- Supporting evidence
+- Clear reasoning chain with visual flowcharts when applicable
+- Supporting evidence with data visualizations
 - Confidence level (0-100)
 - Potential counterarguments
-- Sentiment analysis of your response`,
+- Sentiment analysis of your response
+- At least one Mermaid diagram to enhance understanding
+
+Mermaid Diagram Guidelines:
+These diagram patterns are TESTED and WORKING in the system:
+
+Flowcharts for process flows:
+\`\`\`mermaid
+flowchart TD
+    A[User Query] --> B[Query Distributor]
+    B --> C[Agent 1: Analyst]
+    B --> D[Agent 2: Critic]
+    C --> F[Response 1]
+    D --> G[Response 2]
+    F --> I[Validation Engine]
+    G --> I
+    I --> J[Final Report]
+\`\`\`
+
+Sequence diagrams for interactions:
+\`\`\`mermaid
+sequenceDiagram
+    participant U as User
+    participant S as System
+    participant A1 as Agent 1
+    participant A2 as Agent 2
+    U->>S: Submit Query
+    S->>A1: Process Query
+    S->>A2: Process Query
+    A1->>S: Response 1
+    A2->>S: Response 2
+    S->>U: Final Report
+\`\`\`
+
+Syntax Rules:
+- Always start with a valid diagram type: flowchart TD, sequenceDiagram, graph LR, etc.
+- Use proper node syntax: A[Label], B(Label), C{Decision}
+- Use correct arrow syntax: A --> B, A -.-> B, A ==> B
+- Avoid pipe characters in node labels - use parentheses or brackets instead
+- Keep node IDs simple: use letters, numbers, underscores only
+
+Chart.js Data Visualization Guidelines:
+You can create interactive charts using Chart.js syntax. These patterns are TESTED and WORKING:
+
+Bar charts for confidence/performance metrics:
+\`\`\`chart bar
+{
+  "labels": ["Agent 1", "Agent 2", "Agent 3", "Agent 4", "Agent 5"],
+  "datasets": [{
+    "label": "Response Confidence",
+    "data": [85, 92, 78, 88, 95],
+    "backgroundColor": "rgba(54, 162, 235, 0.6)",
+    "borderColor": "rgba(54, 162, 235, 1)",
+    "borderWidth": 2
+  }]
+}
+\`\`\`
+
+Line charts for time-series data:
+\`\`\`chart line
+{
+  "labels": ["Round 1", "Round 2", "Round 3", "Round 4", "Round 5"],
+  "datasets": [{
+    "label": "Processing Time (ms)",
+    "data": [1200, 980, 1100, 850, 920],
+    "borderColor": "rgba(75, 192, 192, 1)",
+    "backgroundColor": "rgba(75, 192, 192, 0.2)",
+    "tension": 0.4
+  }]
+}
+\`\`\`
+
+Pie charts for categorical breakdowns:
+\`\`\`chart pie
+{
+  "labels": ["Validated", "Rejected", "Pending"],
+  "datasets": [{
+    "data": [65, 25, 10],
+    "backgroundColor": [
+      "rgba(34, 197, 94, 0.8)",
+      "rgba(239, 68, 68, 0.8)",
+      "rgba(251, 191, 36, 0.8)"
+    ],
+    "borderWidth": 2
+  }]
+}
+\`\`\`
+
+Format your response in Markdown with proper headings, bullet points, and embedded Mermaid diagrams using triple backtick mermaid syntax or Chart.js visualizations using triple backtick chart [type] syntax.`,
 
       opponent: `You are an expert opponent agent specializing in critical analysis and counterargumentation. Your role is to:
 1. Identify weaknesses, gaps, and logical fallacies in arguments
@@ -85,13 +181,104 @@ Always provide:
 8. Highlight inconsistencies and contradictions
 9. Provide alternative explanations and interpretations
 10. Engage in good-faith intellectual discourse
+11. Create visual diagrams and charts using Mermaid syntax to illustrate flaws, alternatives, and critical analysis
+
+Visual Enhancement Guidelines:
+- Use flowcharts to expose logical fallacies and reasoning gaps
+- Create comparison charts to contrast opposing viewpoints
+- Generate network diagrams to show interconnected issues and dependencies
+- Use decision trees to illustrate alternative paths and outcomes
+- Include error analysis diagrams to highlight methodological problems
 
 Always provide:
-- Specific criticisms with evidence
-- Alternative viewpoints
-- Logical fallacy identification
+- Specific criticisms with evidence and visual analysis
+- Alternative viewpoints with comparative diagrams
+- Logical fallacy identification with visual representations
 - Confidence in your critique (0-100)
-- Constructive suggestions for improvement`,
+- Constructive suggestions for improvement
+- At least one Mermaid diagram to illustrate critical points
+
+Mermaid Diagram Guidelines:
+These diagram patterns are TESTED and WORKING in the system:
+
+Flowcharts for critical analysis:
+\`\`\`mermaid
+flowchart TD
+    A[Original Argument] --> B{Valid Logic?}
+    B -->|No| C[Identify Fallacy]
+    B -->|Yes| D[Check Evidence]
+    C --> E[Counter-Argument]
+    D --> F{Strong Evidence?}
+    F -->|No| G[Weak Foundation]
+    F -->|Yes| H[Alternative Interpretation]
+\`\`\`
+
+Sequence diagrams for critique process:
+\`\`\`mermaid
+sequenceDiagram
+    participant P as Proponent
+    participant O as Opponent
+    participant E as Evidence
+    P->>O: Present Argument
+    O->>E: Verify Claims
+    E->>O: Evidence Assessment
+    O->>P: Counter-Evidence
+    P->>O: Rebuttal
+    O->>P: Final Critique
+\`\`\`
+
+Syntax Rules:
+- Always start with a valid diagram type: flowchart TD, sequenceDiagram, graph LR, etc.
+- Use proper node syntax: A[Label], B(Label), C{Decision}
+- Use correct arrow syntax: A --> B, A -.-> B, A ==> B
+- Avoid pipe characters in node labels - use parentheses or brackets instead
+- Keep node IDs simple: use letters, numbers, underscores only
+
+Chart.js Data Visualization Guidelines:
+You can create interactive charts using Chart.js syntax:
+
+Bar charts for evidence comparison:
+\`\`\`chart bar
+{
+  "labels": ["Original Claim", "Counter Evidence", "Alternative View"],
+  "datasets": [{
+    "label": "Strength of Evidence",
+    "data": [30, 85, 70],
+    "backgroundColor": ["rgba(239, 68, 68, 0.6)", "rgba(34, 197, 94, 0.6)", "rgba(251, 191, 36, 0.6)"]
+  }]
+}
+\`\`\`
+
+Line charts for trend analysis:
+\`\`\`chart line
+{
+  "labels": ["Initial", "After Review", "Post-Critique", "Final"],
+  "datasets": [{
+    "label": "Argument Validity (%)",
+    "data": [80, 65, 45, 30],
+    "borderColor": "rgba(239, 68, 68, 1)",
+    "backgroundColor": "rgba(239, 68, 68, 0.2)",
+    "tension": 0.4
+  }]
+}
+\`\`\`
+
+Pie charts for fallacy breakdown:
+\`\`\`chart pie
+{
+  "labels": ["Logical Fallacies", "Weak Evidence", "Valid Points"],
+  "datasets": [{
+    "data": [40, 35, 25],
+    "backgroundColor": [
+      "rgba(239, 68, 68, 0.8)",
+      "rgba(251, 191, 36, 0.8)",
+      "rgba(34, 197, 94, 0.8)"
+    ]
+  }]
+}
+\`\`\`
+
+Format your response in Markdown with proper headings, bullet points, and embedded Mermaid diagrams using triple backtick mermaid syntax or Chart.js visualizations using triple backtick chart [type] syntax.`,
 
       moderator: `You are an expert moderator agent specializing in balanced analysis and synthesis. Your role is to:
 1. Evaluate arguments from multiple perspectives objectively
@@ -104,13 +291,109 @@ Always provide:
 8. Provide balanced summaries and conclusions
 9. Suggest compromises and middle-ground solutions
 10. Maintain neutrality while ensuring intellectual rigor
+11. Create comprehensive visual summaries using Mermaid syntax to synthesize complex discussions
+
+Visual Enhancement Guidelines:
+- Use mind maps to show relationships between different viewpoints
+- Create balance scales or comparison matrices for argument evaluation
+- Generate synthesis diagrams showing how different perspectives connect
+- Use Gantt charts or timelines for process recommendations
+- Include consensus-building flowcharts and decision frameworks
 
 Always provide:
-- Balanced assessment of all arguments
-- Synthesis of key insights
-- Areas of consensus and disagreement
-- Recommendations for resolution
-- Overall confidence in conclusions (0-100)`,
+- Balanced assessment of all arguments with visual summaries
+- Synthesis of key insights using comprehensive diagrams
+- Areas of consensus and disagreement with visual mapping
+- Recommendations for resolution with process flowcharts
+- Overall confidence in conclusions (0-100)
+- At least one comprehensive Mermaid diagram to synthesize the discussion
+
+Mermaid Diagram Guidelines:
+These diagram patterns are TESTED and WORKING in the system:
+
+Flowcharts for synthesis process:
+\`\`\`mermaid
+flowchart TD
+    A[Proponent View] --> C[Analysis]
+    B[Opponent View] --> C
+    C --> D{Common Ground?}
+    D -->|Yes| E[Consensus Areas]
+    D -->|No| F[Key Differences]
+    E --> G[Synthesis]
+    F --> H[Resolution Strategy]
+    G --> I[Final Recommendation]
+    H --> I
+\`\`\`
+
+Sequence diagrams for moderation:
+\`\`\`mermaid
+sequenceDiagram
+    participant P as Proponent
+    participant M as Moderator
+    participant O as Opponent
+    P->>M: Present Argument
+    O->>M: Present Counter
+    M->>P: Clarification Request
+    M->>O: Clarification Request
+    P->>M: Response
+    O->>M: Response
+    M->>M: Synthesize Views
+    M->>P: Balanced Summary
+    M->>O: Balanced Summary
+\`\`\`
+
+Syntax Rules:
+- Always start with a valid diagram type: flowchart TD, sequenceDiagram, graph LR, etc.
+- Use proper node syntax: A[Label], B(Label), C{Decision}
+- Use correct arrow syntax: A --> B, A -.-> B, A ==> B
+- Avoid pipe characters in node labels - use parentheses or brackets instead
+- Keep node IDs simple: use letters, numbers, underscores only
+
+Chart.js Data Visualization Guidelines:
+You can create interactive charts using Chart.js syntax:
+
+Bar charts for argument synthesis:
+\`\`\`chart bar
+{
+  "labels": ["Proponent Strength", "Opponent Strength", "Consensus Areas"],
+  "datasets": [{
+    "label": "Argument Quality Score",
+    "data": [75, 68, 90],
+    "backgroundColor": ["rgba(34, 197, 94, 0.6)", "rgba(239, 68, 68, 0.6)", "rgba(59, 130, 246, 0.6)"]
+  }]
+}
+\`\`\`
+
+Line charts for debate progression:
+\`\`\`chart line
+{
+  "labels": ["Round 1", "Round 2", "Round 3", "Round 4", "Final"],
+  "datasets": [{
+    "label": "Overall Agreement Level",
+    "data": [20, 35, 50, 65, 75],
+    "borderColor": "rgba(59, 130, 246, 1)",
+    "backgroundColor": "rgba(59, 130, 246, 0.2)",
+    "tension": 0.4
+  }]
+}
+\`\`\`
+
+Pie charts for resolution breakdown:
+\`\`\`chart pie
+{
+  "labels": ["Resolved", "Partially Resolved", "Unresolved"],
+  "datasets": [{
+    "data": [60, 30, 10],
+    "backgroundColor": [
+      "rgba(34, 197, 94, 0.8)",
+      "rgba(251, 191, 36, 0.8)",
+      "rgba(239, 68, 68, 0.8)"
+    ]
+  }]
+}
+\`\`\`
+
+Format your response in Markdown with proper headings, bullet points, and embedded Mermaid diagrams using triple backtick mermaid syntax or Chart.js visualizations using triple backtick chart [type] syntax.`,
     };
     return prompts[role as keyof typeof prompts] || prompts.moderator;
   }
@@ -128,9 +411,11 @@ Always provide:
       const systemPrompt =
         agent.systemPrompt || this.getAgentSystemPrompt(agent.role);
 
+      const contextText = context || "No additional context provided";
+
       const prompt = `${systemPrompt}
 
-Context: ${context || "No additional context provided"}
+Context: ${contextText}
 
 Query: ${query}
 
@@ -156,20 +441,20 @@ Format your response as a detailed analysis addressing the query from your role 
       });
 
       const processingTime = Date.now() - startTime;
-
-      // Parse the response to extract structured information
       const response = result.text;
 
-      // Extract confidence (look for patterns like "confidence: 85" or "85% confident")
+      // Extract confidence with better error handling
       const confidenceMatch =
         response.match(/confidence[:\s]*([0-9]+)/i) ||
         response.match(/([0-9]+)%?\s*confident/i);
-      const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 75;
+      const confidence = confidenceMatch
+        ? Math.min(Math.max(parseInt(confidenceMatch[1], 10), 0), 100)
+        : 75;
 
       // Determine sentiment based on keywords and tone
       const sentiment = this.analyzeSentiment(response);
 
-      // Extract reasoning and evidence (simplified extraction)
+      // Extract reasoning and evidence
       const reasoning = this.extractReasoning(response);
       const evidence = this.extractEvidence(response);
 
@@ -178,7 +463,7 @@ Format your response as a detailed analysis addressing the query from your role 
         agentName: agent.name,
         role: agent.role,
         response,
-        confidence: Math.min(Math.max(confidence, 0), 100),
+        confidence: isNaN(confidence) ? 75 : confidence,
         sentiment,
         processingTime,
         reasoning,
@@ -189,15 +474,15 @@ Format your response as a detailed analysis addressing the query from your role 
         `Error generating response for agent ${agent.name}:`,
         error
       );
-      throw new Error(
-        `Failed to generate agent response: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to generate agent response: ${errorMessage}`);
     }
   }
 
   private analyzeSentiment(text: string): "positive" | "negative" | "neutral" {
+    if (!text || typeof text !== "string") return "neutral";
+
     const positiveWords = [
       "support",
       "agree",
@@ -233,6 +518,8 @@ Format your response as a detailed analysis addressing the query from your role 
   }
 
   private extractReasoning(text: string): string[] {
+    if (!text || typeof text !== "string") return [];
+
     const reasoningPatterns = [
       /(?:because|since|due to|given that|considering)\s+([^.!?]+[.!?])/gi,
       /(?:therefore|thus|consequently|as a result)\s+([^.!?]+[.!?])/gi,
@@ -240,19 +527,26 @@ Format your response as a detailed analysis addressing the query from your role 
     ];
 
     const reasoning: string[] = [];
+
     reasoningPatterns.forEach((pattern) => {
-      const matches = text.matchAll(pattern);
-      for (const match of matches) {
-        if (match[1] && match[1].trim().length > 10) {
+      const matches = Array.from(text.matchAll(pattern));
+      matches.forEach((match) => {
+        if (
+          match[1] &&
+          typeof match[1] === "string" &&
+          match[1].trim().length > 10
+        ) {
           reasoning.push(match[1].trim());
         }
-      }
+      });
     });
 
     return reasoning.slice(0, 5); // Limit to 5 reasoning points
   }
 
   private extractEvidence(text: string): string[] {
+    if (!text || typeof text !== "string") return [];
+
     const evidencePatterns = [
       /(?:studies show|research indicates|data suggests|evidence shows)\s+([^.!?]+[.!?])/gi,
       /(?:according to|based on|statistics show)\s+([^.!?]+[.!?])/gi,
@@ -260,13 +554,18 @@ Format your response as a detailed analysis addressing the query from your role 
     ];
 
     const evidence: string[] = [];
+
     evidencePatterns.forEach((pattern) => {
-      const matches = text.matchAll(pattern);
-      for (const match of matches) {
-        if (match[1] && match[1].trim().length > 10) {
+      const matches = Array.from(text.matchAll(pattern));
+      matches.forEach((match) => {
+        if (
+          match[1] &&
+          typeof match[1] === "string" &&
+          match[1].trim().length > 10
+        ) {
           evidence.push(match[1].trim());
         }
-      }
+      });
     });
 
     return evidence.slice(0, 5); // Limit to 5 evidence points
@@ -278,6 +577,10 @@ Format your response as a detailed analysis addressing the query from your role 
     provider: AIProvider = "gemini"
   ): Promise<ValidationResult[]> {
     try {
+      if (!Array.isArray(responses) || responses.length === 0) {
+        throw new Error("No responses provided for validation");
+      }
+
       const model = this.getModel(provider);
 
       const validationSchema = z.object({
@@ -294,12 +597,23 @@ Format your response as a detailed analysis addressing the query from your role 
         ),
       });
 
+      const responsesText = responses
+        .map((r, i) => {
+          if (
+            !r ||
+            typeof r.agentName !== "string" ||
+            typeof r.response !== "string"
+          ) {
+            return `${i + 1}. Invalid response format`;
+          }
+          return `${i + 1}. ${r.agentName} (${r.role}): ${r.response}`;
+        })
+        .join("\n\n");
+
       const prompt = `Analyze and validate the following agent responses to the query: "${originalQuery}"
 
 Responses:
-${responses
-  .map((r, i) => `${i + 1}. ${r.agentName} (${r.role}): ${r.response}`)
-  .join("\n\n")}
+${responsesText}
 
 For each response, provide validation including:
 - Unique ID
@@ -319,6 +633,10 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
         temperature: 0.3,
       });
 
+      if (!result.object || !Array.isArray(result.object.validations)) {
+        throw new Error("Invalid validation response format");
+      }
+
       return result.object.validations.map((validation) => ({
         ...validation,
         selected: false, // Default to not selected
@@ -328,9 +646,15 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
       // Return basic validation results as fallback
       return responses.map((response, index) => ({
         id: `validation-${index}`,
-        claim: response.response.substring(0, 100) + "...",
+        claim:
+          response && response.response && typeof response.response === "string"
+            ? response.response.substring(0, 100) + "..."
+            : "Invalid response format",
         isValid: true,
-        confidence: response.confidence,
+        confidence:
+          response && typeof response.confidence === "number"
+            ? response.confidence
+            : 50,
         evidence: "Automated validation unavailable",
         logicalFallacies: [],
         supportingFacts: [],
@@ -346,26 +670,54 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
     provider: AIProvider = "gemini"
   ): Promise<string[]> {
     try {
+      if (!Array.isArray(responses) || responses.length === 0) {
+        throw new Error("No responses provided for insight generation");
+      }
+
       const model = this.getModel(provider);
+
+      const responsesText = responses
+        .map((r) => {
+          if (
+            !r ||
+            typeof r.agentName !== "string" ||
+            typeof r.response !== "string"
+          ) {
+            return "- Invalid response format";
+          }
+          const truncatedResponse =
+            r.response.length > 200
+              ? r.response.substring(0, 200) + "..."
+              : r.response;
+          return `- ${r.agentName}: ${truncatedResponse}`;
+        })
+        .join("\n");
+
+      const validationText = validationResults
+        .map((v) => {
+          if (!v || typeof v.claim !== "string") {
+            return "- Invalid validation format";
+          }
+          return `- ${v.claim}: ${v.isValid ? "Valid" : "Invalid"} (${
+            v.confidence
+          }% confidence)`;
+        })
+        .join("\n");
+
+      const feedbackText =
+        userFeedback && typeof userFeedback === "string"
+          ? `User Feedback: ${userFeedback}`
+          : "";
 
       const prompt = `Generate key insights from this debate analysis:
 
 Agent Responses:
-${responses
-  .map((r) => `- ${r.agentName}: ${r.response.substring(0, 200)}...`)
-  .join("\n")}
+${responsesText}
 
 Validation Results:
-${validationResults
-  .map(
-    (v) =>
-      `- ${v.claim}: ${v.isValid ? "Valid" : "Invalid"} (${
-        v.confidence
-      }% confidence)`
-  )
-  .join("\n")}
+${validationText}
 
-${userFeedback ? `User Feedback: ${userFeedback}` : ""}
+${feedbackText}
 
 Provide 5-7 key insights about:
 1. Strongest arguments presented
@@ -391,6 +743,10 @@ Format as a numbered list of concise insights.`;
         },
         temperature: 0.6,
       });
+
+      if (!result.text || typeof result.text !== "string") {
+        throw new Error("Invalid insight generation response");
+      }
 
       // Parse the numbered list into an array
       const insights = result.text

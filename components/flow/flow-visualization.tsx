@@ -1233,23 +1233,29 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
       const dagreGraph = new dagre.graphlib.Graph();
       dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-      // Configure the layout based on selected direction
+      // Configure the layout with maximum spacing based on node dimensions
       const layoutConfig = {
         rankdir: layoutDirection,
-        nodesep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 60 : 80,
-        ranksep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 120 : 100,
+        // Increased node separation for maximum distance
+        nodesep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 250 : 400,
+        // Increased rank separation for maximum distance between levels
+        ranksep: layoutDirection === 'LR' || layoutDirection === 'RL' ? 250 : 300,
+        // Additional spacing configuration
+        marginx: 50,
+        marginy: 50,
       };
 
       dagreGraph.setGraph(layoutConfig);
 
-      // Define node dimensions based on type
+      // Define node dimensions based on type with proper spacing considerations
       const getNodeDimensions = (nodeType: string) => {
         const dimensions = {
-          agent: { width: 120, height: 100 },
-          response: { width: 240, height: 180 },
-          question: { width: 200, height: 120 },
-          debate: { width: 220, height: 140 },
-          default: { width: 180, height: 100 }
+          agent: { width: 160, height: 120 },
+          response: { width: 320, height: 220 },
+          question: { width: 280, height: 150 },
+          debate: { width: 300, height: 180 },
+          validatorTable: { width: 400, height: 250 },
+          default: { width: 200, height: 120 }
         };
         return dimensions[nodeType as keyof typeof dimensions] || dimensions.default;
       };
@@ -1404,9 +1410,9 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Flow Area */}
-      <div className="flex-1 relative">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
+      {/* Flow Area - Takes remaining space */}
+      <div className="flex-1 relative overflow-hidden">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -1416,9 +1422,10 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
           onInit={setReactFlowInstance}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-gray-50"
+          className="w-full h-full bg-gray-50"
           defaultEdgeOptions={{
             animated: true,
+            type: 'step',
             style: { strokeWidth: 2 },
           }}
           nodesDraggable={true}
@@ -1436,8 +1443,8 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
 
         {/* No Agents Connected Indicator */}
         {selectedAgents.length === 0 && (
-          <div className="absolute top-4 right-4 z-10">
-            <Card className="bg-yellow-50 border-yellow-200">
+          <div className="absolute top-4 right-4 z-20">
+            <Card className="bg-yellow-50 border-yellow-200 shadow-lg">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-yellow-800">
                   <Users className="h-4 w-4" />
@@ -1452,29 +1459,9 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         )}
       </div>
 
-      {/* Flow Orchestrator Modal */}
-      {showFlowOrchestrator && orchestratorData && (
-        <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
-            <FlowOrchestrator
-              initialData={orchestratorData}
-              onFlowRestart={handleFlowRestart}
-              onCancel={() => setShowFlowOrchestrator(false)}
-              availableAgents={availableAgents.map(agent => ({
-                id: agent.id,
-                name: agent.name,
-                role: agent.description || 'Agent'
-              }))}
-            />
-          </div>
-        </div>
-      )}
-
-
-
-      {/* Input Area */}
-      <div className="absolute bottom-4 left-4 right-4 z-10">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      {/* Input Area - Fixed at bottom */}
+      <div className="shrink-0 p-4 bg-white/95 backdrop-blur-sm border-t border-gray-200">
+        <form onSubmit={handleSubmit} className="flex gap-2 max-w-none">
           {/* Layout Selector */}
           <div className="flex gap-1 shrink-0">
             {[
@@ -1503,7 +1490,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                 <Users className="h-4 w-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80">
+            <SheetContent side="left" className="w-80 z-50">
               <SheetHeader>
                 <SheetTitle>Select Agents</SheetTitle>
                 <SheetDescription>
@@ -1535,8 +1522,8 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                     })}
                   </div>
                 </div>
-                <ScrollArea className="h-96">
-                  <div className="space-y-2">
+                <ScrollArea className="h-[calc(100vh-300px)]">
+                  <div className="space-y-2 pr-4">
                     {isLoadingAgents ? (
                       <div className="text-center py-4 text-sm text-muted-foreground">
                         Loading agents...
@@ -1582,14 +1569,15 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
               </div>
             </SheetContent>
           </Sheet>
-          <div className="flex-1 relative">
+
+          <div className="flex-1 relative min-w-0">
             <Input
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Enter debate topic, question, or argument..."
               disabled={isProcessing}
-              className="pr-12 bg-white/90 backdrop-blur-sm border-2"
+              className="w-full pr-12 bg-white/90 backdrop-blur-sm border-2"
             />
             {isProcessing && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1597,7 +1585,8 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
               </div>
             )}
           </div>
-          <Button type="submit" disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0}>
+
+          <Button type="submit" disabled={!inputValue.trim() || isProcessing || selectedAgents.length === 0} className="shrink-0">
             <Send className="h-4 w-4" />
           </Button>
 
@@ -1615,7 +1604,23 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         </form>
       </div>
 
-
+      {/* Flow Orchestrator Modal */}
+      {showFlowOrchestrator && orchestratorData && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+            <FlowOrchestrator
+              initialData={orchestratorData}
+              onFlowRestart={handleFlowRestart}
+              onCancel={() => setShowFlowOrchestrator(false)}
+              availableAgents={availableAgents.map(agent => ({
+                id: agent.id,
+                name: agent.name,
+                role: agent.description || 'Agent'
+              }))}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
