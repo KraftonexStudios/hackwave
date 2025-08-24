@@ -9,7 +9,7 @@ import type {
 } from "@/lib/ai/unified-client";
 
 // Choose AI provider based on environment variable
-const AI_PROVIDER = (process.env.AI_PROVIDER || "gemini") as AIProvider;
+const AI_PROVIDER = (process.env.AI_PROVIDER || "groq") as AIProvider;
 
 interface ProcessRequest {
   query: string;

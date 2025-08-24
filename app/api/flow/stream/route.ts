@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { unifiedAIClient } from "@/lib/ai/unified-client";
+import { generateChartData } from "@/app/api/charts/route";
+import { generateProsConsAnalysis } from "@/app/api/proscons/route";
+import { performWebSearch } from "@/app/api/search/playwright/route";
 import type {
   AgentResponse,
   ValidationResult,
@@ -9,11 +12,12 @@ import type {
 } from "@/lib/ai/unified-client";
 
 // Choose AI provider based on environment variable
-const AI_PROVIDER = (process.env.AI_PROVIDER || "gemini") as AIProvider;
+const AI_PROVIDER = (process.env.AI_PROVIDER || "groq") as AIProvider;
 
 interface ProcessRequest {
   query: string;
   selectedAgents?: string[];
+  enabledSystemAgents?: string[];
   sessionId?: string;
 }
 
@@ -61,8 +65,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { query, selectedAgents, sessionId }: ProcessRequest =
-      await request.json();
+    const {
+      query,
+      selectedAgents,
+      enabledSystemAgents,
+      sessionId,
+    }: ProcessRequest = await request.json();
 
     if (!query?.trim()) {
       return new Response(JSON.stringify({ error: "Query is required" }), {
@@ -146,6 +154,319 @@ export async function POST(request: NextRequest) {
             },
             timestamp: new Date().toISOString(),
           });
+
+          // Initialize system agent data variables
+          let searchEngineData: any = null;
+          let chartAgentData: any = null;
+          let prosConsAgentData: any = null;
+
+          // Step 3.5: Add search engine node if enabled
+          if (enabledSystemAgents?.includes("search-engine")) {
+            sendEvent({
+              type: "node_added",
+              data: {
+                id: "search-engine",
+                type: "searchEngine",
+                position: { x: 600, y: 150 },
+                data: {
+                  query: query,
+                  results: [],
+                  timestamp: new Date().toISOString(),
+                  isLoading: true,
+                },
+              },
+              timestamp: new Date().toISOString(),
+            });
+
+            // Process search engine request
+            try {
+              console.log(
+                "Flow stream - Performing web search directly for query:",
+                query
+              );
+
+              // Call search function directly
+              const searchData = await performWebSearch(query);
+
+              if (searchData.success) {
+                searchEngineData = searchData; // Store for validator
+
+                // Update search engine node with results
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "search-engine",
+                    type: "searchEngine",
+                    position: { x: 600, y: 150 },
+                    data: {
+                      query: query,
+                      results: searchData.results || [],
+                      timestamp: new Date().toISOString(),
+                      totalResults: searchData.totalResults,
+                      processingTime: searchData.processingTime,
+                      isLoading: false,
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              } else {
+                // Handle error response
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "search-engine",
+                    type: "searchEngine",
+                    position: { x: 600, y: 150 },
+                    data: {
+                      query: query,
+                      results: [],
+                      timestamp: new Date().toISOString(),
+                      isLoading: false,
+                      error: searchData.error || "Search failed",
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            } catch (searchError) {
+              console.error("Search engine error:", searchError);
+              // Update with error state
+              sendEvent({
+                type: "node_updated",
+                data: {
+                  id: "search-engine",
+                  type: "searchEngine",
+                  position: { x: 600, y: 150 },
+                  data: {
+                    query: query,
+                    results: [],
+                    timestamp: new Date().toISOString(),
+                    isLoading: false,
+                    error: searchError instanceof Error ? searchError.message : "Search engine unavailable",
+                  },
+                },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+
+          // Step 3.6: Add chart agent node if enabled
+          if (enabledSystemAgents?.includes("chart-agent")) {
+            sendEvent({
+              type: "node_added",
+              data: {
+                id: "chart-agent",
+                type: "chart-agent",
+                position: { x: 800, y: 150 },
+                data: {
+                  query: query,
+                  chartData: {
+                    type: "bar",
+                    data: [],
+                    isLoading: true,
+                    error: null,
+                  },
+                  status: "processing",
+                },
+              },
+              timestamp: new Date().toISOString(),
+            });
+
+            // Process chart agent request
+            try {
+              console.log(
+                "Flow stream - Generating chart data directly for query:",
+                query
+              );
+
+              // Call chart generation function directly
+              const chartData = await generateChartData(query, "bar");
+
+              if (chartData.success) {
+                chartAgentData = chartData; // Store for validator
+
+                // Update chart agent node with results
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "chart-agent",
+                    updates: {
+                      data: {
+                        query: query,
+                        chartData: {
+                          type: chartData.chartType || "bar",
+                          data: chartData.data || [],
+                          mermaidCode: chartData.mermaidCode,
+                          plotlyConfig: chartData.plotlyConfig,
+                          networkData: chartData.networkData,
+                          title: chartData.title,
+                          description: chartData.description,
+                          isLoading: false,
+                          error: null,
+                        },
+                        status: "completed",
+                      },
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              } else {
+                // Handle error response
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "chart-agent",
+                    updates: {
+                      data: {
+                        query: query,
+                        chartData: {
+                          type: "bar",
+                          data: [],
+                          isLoading: false,
+                          error: chartData.error || "Chart generation failed",
+                        },
+                        status: "error",
+                      },
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            } catch (chartError) {
+              console.error("Chart agent error:", chartError);
+              // Update with error state
+              sendEvent({
+                type: "node_updated",
+                data: {
+                  id: "chart-agent",
+                  updates: {
+                    data: {
+                      query: query,
+                      chartData: {
+                        type: "bar",
+                        data: [],
+                        isLoading: false,
+                        error: "Chart agent unavailable",
+                      },
+                      status: "error",
+                    },
+                  },
+                },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+
+          // Step 3.7: Add pros/cons agent node if enabled
+          if (enabledSystemAgents?.includes("proscons-agent")) {
+            sendEvent({
+              type: "node_added",
+              data: {
+                id: "proscons-agent",
+                type: "proscons-agent",
+                position: { x: 1000, y: 150 },
+                data: {
+                  query: query,
+                  prosConsData: {
+                    pros: [],
+                    cons: [],
+                    summary: "",
+                    recommendation: "",
+                    isLoading: true,
+                    error: null,
+                  },
+                  status: "processing",
+                },
+              },
+              timestamp: new Date().toISOString(),
+            });
+
+            // Process pros/cons agent request
+            try {
+              console.log(
+                "Flow stream - Generating pros/cons analysis directly for query:",
+                query
+              );
+
+              // Call pros/cons generation function directly
+              const prosConsData = await generateProsConsAnalysis(query);
+
+              if (prosConsData.success) {
+                prosConsAgentData = prosConsData; // Store for validator
+
+                // Update pros/cons agent node with results
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "proscons-agent",
+                    updates: {
+                      data: {
+                        query: query,
+                        prosConsData: {
+                          pros: prosConsData.pros,
+                          cons: prosConsData.cons,
+                          summary: prosConsData.summary,
+                          recommendation: prosConsData.recommendation,
+                          isLoading: false,
+                          error: null,
+                        },
+                        status: "completed",
+                      },
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              } else {
+                // Handle error response
+                sendEvent({
+                  type: "node_updated",
+                  data: {
+                    id: "proscons-agent",
+                    updates: {
+                      data: {
+                        query: query,
+                        prosConsData: {
+                          pros: [],
+                          cons: [],
+                          summary: "",
+                          recommendation: "",
+                          isLoading: false,
+                          error:
+                            prosConsData.error || "Pros/cons analysis failed",
+                        },
+                        status: "error",
+                      },
+                    },
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            } catch (prosConsError) {
+              console.error("Pros/cons agent error:", prosConsError);
+              // Update with error state
+              sendEvent({
+                type: "node_updated",
+                data: {
+                  id: "proscons-agent",
+                  updates: {
+                    data: {
+                      query: query,
+                      prosConsData: {
+                        pros: [],
+                        cons: [],
+                        summary: "",
+                        recommendation: "",
+                        isLoading: false,
+                        error: "Pros/cons agent unavailable",
+                      },
+                      status: "error",
+                    },
+                  },
+                },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
 
           // Step 4: Add agent nodes and start processing
           const agentResponses: AgentResponse[] = [];
@@ -347,7 +668,8 @@ export async function POST(request: NextRequest) {
           const validationResults = await validateResponsesStreaming(
             agentResponses,
             query,
-            sendEvent
+            sendEvent,
+            searchEngineData
           );
 
           // Step 8: Update validator status
@@ -547,7 +869,8 @@ async function generateAgentResponseStreaming(
 async function validateResponsesStreaming(
   responses: AgentResponse[],
   query: string,
-  sendEvent: (event: StreamEvent) => void
+  sendEvent: (event: StreamEvent) => void,
+  searchEngineData?: any
 ): Promise<ValidationResult[]> {
   try {
     // Transform database AgentResponse to AI client format
@@ -563,9 +886,19 @@ async function validateResponsesStreaming(
       evidence: (r as any).evidence || [],
     }));
 
+    // Include search engine data in validation context if available
+    let validationContext = query;
+    if (searchEngineData && searchEngineData.results) {
+      const searchContext = searchEngineData.results
+        .slice(0, 3) // Use top 3 results
+        .map((result: any) => `${result.title}: ${result.snippet}`)
+        .join("\n");
+      validationContext = `${query}\n\nAdditional Context from Web Search:\n${searchContext}`;
+    }
+
     const validationResults = await unifiedAIClient.validateResponses(
       aiResponses,
-      query,
+      validationContext,
       AI_PROVIDER
     );
 

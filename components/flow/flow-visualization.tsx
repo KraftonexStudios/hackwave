@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Send, Users, Settings, Layout, X, ChevronRight } from 'lucide-react';
+import { Send, Users, Settings, Layout, X, ChevronRight, Search } from 'lucide-react';
 import { getActiveAgents } from '@/actions/agents';
 import type { Agent } from '@/database.types';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +31,10 @@ import { DebateNode } from './nodes/debate-node';
 import { QuestionNode } from './nodes/question-node';
 import { ResponseNode } from './nodes/response-node';
 import { ValidatorTableNode } from './nodes/validator-table-node';
+import { SearchEngineNode } from './nodes/search-engine-node';
+import { ChartAgentNode } from './nodes/chart-agent-node';
+import { ProsConsAgentNode } from './nodes/proscons-agent-node';
+import GlobalVisualizerNode from './nodes/global-visualizer-node';
 
 import { FlowOrchestrator } from './flow-orchestrator';
 import { contextManager, FlowRestartConfig } from '@/lib/context-manager';
@@ -48,6 +52,10 @@ const nodeTypes = {
   question: QuestionNode,
   response: ResponseNode,
   validatorTable: ValidatorTableNode,
+  searchEngine: SearchEngineNode,
+  'chart-agent': ChartAgentNode,
+  'proscons-agent': ProsConsAgentNode,
+  'global-visualizer': GlobalVisualizerNode,
 };
 
 const initialNodes: Node[] = [
@@ -82,6 +90,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
   const [selectedAgents, setSelectedAgents] = useState<string[]>(agents.map(agent => agent.id));
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [showAgentPanel, setShowAgentPanel] = useState(false);
+  const [enabledSystemAgents, setEnabledSystemAgents] = useState<string[]>([]);
   const [layoutDirection, setLayoutDirection] = useState<'TB' | 'BT' | 'LR' | 'RL'>('TB');
   const [showFlowOrchestrator, setShowFlowOrchestrator] = useState(false);
   const [orchestratorData, setOrchestratorData] = useState<UserInteractionFormData | null>(null);
@@ -445,6 +454,46 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                               return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
                             });
                           });
+                        } else if (newNode.id === 'search-engine') {
+                          // Connect start node to search engine agent
+                          const searchEngineEdge = {
+                            id: 'start-search-engine',
+                            source: 'start',
+                            target: 'search-engine',
+                            animated: true
+                          };
+                          streamingEdges.set(searchEngineEdge.id, searchEngineEdge);
+                          setEdges(prevEdges => [...prevEdges, searchEngineEdge]);
+                        } else if (newNode.id === 'chart-agent') {
+                          // Connect start node to chart agent
+                          const chartAgentEdge = {
+                            id: 'start-chart-agent',
+                            source: 'start',
+                            target: 'chart-agent',
+                            animated: true
+                          };
+                          streamingEdges.set(chartAgentEdge.id, chartAgentEdge);
+                          setEdges(prevEdges => [...prevEdges, chartAgentEdge]);
+                        } else if (newNode.id === 'proscons-agent') {
+                          // Connect start node to pros/cons agent
+                          const prosConsAgentEdge = {
+                            id: 'start-proscons-agent',
+                            source: 'start',
+                            target: 'proscons-agent',
+                            animated: true
+                          };
+                          streamingEdges.set(prosConsAgentEdge.id, prosConsAgentEdge);
+                          setEdges(prevEdges => [...prevEdges, prosConsAgentEdge]);
+                        } else if (newNode.id === 'global-visualizer') {
+                          // Connect start node to global visualizer
+                          const globalVisualizerEdge = {
+                            id: 'start-global-visualizer',
+                            source: 'start',
+                            target: 'global-visualizer',
+                            animated: true
+                          };
+                          streamingEdges.set(globalVisualizerEdge.id, globalVisualizerEdge);
+                          setEdges(prevEdges => [...prevEdges, globalVisualizerEdge]);
                         }
                         break;
 
@@ -779,6 +828,7 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
         body: JSON.stringify({
           query: topic,
           selectedAgents,
+          enabledSystemAgents,
           sessionId
         })
       });
@@ -894,6 +944,46 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                         return edgeExists ? prevEdges : [...prevEdges, validatorEdge];
                       });
                     });
+                  } else if (newNode.id === 'search-engine') {
+                    // Connect start node to search engine agent
+                    const searchEngineEdge = {
+                      id: 'start-search-engine',
+                      source: 'start',
+                      target: 'search-engine',
+                      animated: true
+                    };
+                    streamingEdges.set(searchEngineEdge.id, searchEngineEdge);
+                    setEdges(prevEdges => [...prevEdges, searchEngineEdge]);
+                  } else if (newNode.id === 'chart-agent') {
+                    // Connect start node to chart agent
+                    const chartAgentEdge = {
+                      id: 'start-chart-agent',
+                      source: 'start',
+                      target: 'chart-agent',
+                      animated: true
+                    };
+                    streamingEdges.set(chartAgentEdge.id, chartAgentEdge);
+                    setEdges(prevEdges => [...prevEdges, chartAgentEdge]);
+                  } else if (newNode.id === 'proscons-agent') {
+                    // Connect start node to pros/cons agent
+                    const prosConsAgentEdge = {
+                      id: 'start-proscons-agent',
+                      source: 'start',
+                      target: 'proscons-agent',
+                      animated: true
+                    };
+                    streamingEdges.set(prosConsAgentEdge.id, prosConsAgentEdge);
+                    setEdges(prevEdges => [...prevEdges, prosConsAgentEdge]);
+                  } else if (newNode.id === 'global-visualizer') {
+                    // Connect start node to global visualizer
+                    const globalVisualizerEdge = {
+                      id: 'start-global-visualizer',
+                      source: 'start',
+                      target: 'global-visualizer',
+                      animated: true
+                    };
+                    streamingEdges.set(globalVisualizerEdge.id, globalVisualizerEdge);
+                    setEdges(prevEdges => [...prevEdges, globalVisualizerEdge]);
                   }
                   break;
 
@@ -1684,6 +1774,158 @@ export function FlowVisualization({ agents = [], sessionId }: FlowVisualizationP
                           {tooltip}
                         </Button>
                       ))}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                {/* System Agents Toggle */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-muted-foreground hover:text-foreground relative">
+                      <Search className="h-4 w-4" />
+                      {enabledSystemAgents.length > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {enabledSystemAgents.length}
+                        </span>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-80 z-[99998]">
+                    <SheetHeader>
+                      <SheetTitle>System Agents</SheetTitle>
+                      <SheetDescription>
+                        Enable system agents to enhance the debate with additional capabilities.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="mt-6">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Enabled: {enabledSystemAgents.length}</span>
+                          {enabledSystemAgents.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEnabledSystemAgents([])}
+                            >
+                              Clear All
+                            </Button>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {enabledSystemAgents.map(agentId => {
+                            const getAgentDisplayName = (id: string) => {
+                              switch (id) {
+                                case 'search-engine': return 'Search Engine';
+                                case 'chart-agent': return 'Chart Agent';
+                                case 'proscons-agent': return 'Pros & Cons Agent';
+                                default: return id;
+                              }
+                            };
+                            return (
+                              <Badge key={agentId} variant="secondary" className="text-xs">
+                                {getAgentDisplayName(agentId)}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Card className="p-3">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id="search-engine"
+                              checked={enabledSystemAgents.includes('search-engine')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setEnabledSystemAgents(prev => [...prev, 'search-engine']);
+                                } else {
+                                  setEnabledSystemAgents(prev => prev.filter(id => id !== 'search-engine'));
+                                }
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <label
+                                htmlFor="search-engine"
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                Search Engine Agent
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Scrapes web results using Puppeteer and formats them with AI for enhanced debate context.
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                                  System Agent
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-3">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id="chart-agent"
+                              checked={enabledSystemAgents.includes('chart-agent')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setEnabledSystemAgents(prev => [...prev, 'chart-agent']);
+                                } else {
+                                  setEnabledSystemAgents(prev => prev.filter(id => id !== 'chart-agent'));
+                                }
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <label
+                                htmlFor="chart-agent"
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                Chart Agent
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Generates interactive charts and graphs from AI data analysis for visual insights.
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+                                  System Agent
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-3">
+                          <div className="flex items-start space-x-3">
+                            <Checkbox
+                              id="proscons-agent"
+                              checked={enabledSystemAgents.includes('proscons-agent')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setEnabledSystemAgents(prev => [...prev, 'proscons-agent']);
+                                } else {
+                                  setEnabledSystemAgents(prev => prev.filter(id => id !== 'proscons-agent'));
+                                }
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <label
+                                htmlFor="proscons-agent"
+                                className="text-sm font-medium cursor-pointer"
+                              >
+                                Pros & Cons Agent
+                              </label>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Analyzes topics and provides structured pros and cons comparison tables with weighted analysis.
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                                  System Agent
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
                     </div>
                   </SheetContent>
                 </Sheet>

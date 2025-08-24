@@ -47,7 +47,8 @@ export function FlowOrchestrator({
     contextUpdates: '',
     additionalInstructions: '',
     selectedAgents: [],
-    availableAgents: availableAgents
+    availableAgents: availableAgents,
+    enabledSystemAgents: initialData?.enabledSystemAgents || []
   };
 
   const [formData, setFormData] = useState<UserInteractionFormData>(

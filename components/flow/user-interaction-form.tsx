@@ -18,7 +18,11 @@ import {
     AlertCircle,
     FileText,
     Users,
-    MessageSquare
+    MessageSquare,
+    Search,
+    Settings,
+    BarChart3,
+    Scale
 } from 'lucide-react';
 import { ValidatorResponse, ValidatorPoint } from './nodes/validator-table-node';
 
@@ -29,6 +33,7 @@ interface UserInteractionFormData {
     additionalInstructions: string;
     selectedAgents: string[];
     availableAgents: Array<{ id: string; name: string; role: string }>;
+    enabledSystemAgents: string[];
 }
 
 interface UserInteractionFormProps {
@@ -45,7 +50,7 @@ export function UserInteractionForm({
     isProcessing = false
 }: UserInteractionFormProps) {
     const [formData, setFormData] = useState<UserInteractionFormData>(data);
-    const [activeTab, setActiveTab] = useState<'review' | 'context' | 'agents'>('review');
+    const [activeTab, setActiveTab] = useState<'review' | 'context' | 'agents' | 'system'>('review');
 
     // Calculate statistics
     const totalPoints = formData.validatorResponses.reduce(
@@ -76,6 +81,15 @@ export function UserInteractionForm({
             selectedAgents: isSelected
                 ? [...prev.selectedAgents, agentId]
                 : prev.selectedAgents.filter(id => id !== agentId)
+        }));
+    };
+
+    const handleSystemAgentToggle = (agentId: string, isEnabled: boolean) => {
+        setFormData(prev => ({
+            ...prev,
+            enabledSystemAgents: isEnabled
+                ? [...prev.enabledSystemAgents, agentId]
+                : prev.enabledSystemAgents.filter(id => id !== agentId)
         }));
     };
 
@@ -119,7 +133,8 @@ export function UserInteractionForm({
                 {[
                     { id: 'review', label: 'Review Responses', icon: FileText },
                     { id: 'context', label: 'Update Context', icon: AlertCircle },
-                    { id: 'agents', label: 'Select Agents', icon: Users }
+                    { id: 'agents', label: 'Select Agents', icon: Users },
+                    { id: 'system', label: 'System Agents', icon: Settings }
                 ].map(tab => {
                     const Icon = tab.icon;
                     return (
@@ -300,6 +315,112 @@ export function UserInteractionForm({
                             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950 rounded border-l-2 border-yellow-500">
                                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                                     Selected agents will participate in the next iteration with the updated context.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {activeTab === 'system' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">System Agents</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                                Enable specialized system agents to enhance the flow processing capabilities.
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* Search Engine Agent */}
+                                <div className="p-4 rounded-lg border-2 border-gray-200 hover:border-gray-300 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <Search className="h-5 w-5 text-blue-500" />
+                                            <div>
+                                                <h3 className="font-medium text-sm">Search Engine Agent</h3>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Uses Puppeteer to scrape web data and format results for analysis
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Checkbox
+                                            checked={formData.enabledSystemAgents.includes('search-engine')}
+                                            onCheckedChange={(checked) =>
+                                                handleSystemAgentToggle('search-engine', checked as boolean)
+                                            }
+                                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                        />
+                                    </div>
+                                    {formData.enabledSystemAgents.includes('search-engine') && (
+                                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded border-l-2 border-blue-500">
+                                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                                                This agent will automatically search the web for relevant information based on the question distributor's queries and provide formatted results as search engine nodes in the flow.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Chart Agent */}
+                                <div className="p-4 rounded-lg border-2 border-gray-200 hover:border-gray-300 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <BarChart3 className="h-5 w-5 text-green-500" />
+                                            <div>
+                                                <h3 className="font-medium text-sm">Chart Agent</h3>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Generates interactive charts and graphs from data analysis
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Checkbox
+                                            checked={formData.enabledSystemAgents.includes('chart-agent')}
+                                            onCheckedChange={(checked) =>
+                                                handleSystemAgentToggle('chart-agent', checked as boolean)
+                                            }
+                                            className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+                                        />
+                                    </div>
+                                    {formData.enabledSystemAgents.includes('chart-agent') && (
+                                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded border-l-2 border-green-500">
+                                            <p className="text-sm text-green-800 dark:text-green-200">
+                                                This agent will automatically create visual charts and graphs based on data analysis, supporting bar charts, line charts, and pie charts for better data visualization.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Pros & Cons Agent */}
+                                <div className="p-4 rounded-lg border-2 border-gray-200 hover:border-gray-300 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            <Scale className="h-5 w-5 text-purple-500" />
+                                            <div>
+                                                <h3 className="font-medium text-sm">Pros & Cons Agent</h3>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Provides structured analysis of advantages and disadvantages
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Checkbox
+                                            checked={formData.enabledSystemAgents.includes('proscons-agent')}
+                                            onCheckedChange={(checked) =>
+                                                handleSystemAgentToggle('proscons-agent', checked as boolean)
+                                            }
+                                            className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                                        />
+                                    </div>
+                                    {formData.enabledSystemAgents.includes('proscons-agent') && (
+                                        <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded border-l-2 border-purple-500">
+                                            <p className="text-sm text-purple-800 dark:text-purple-200">
+                                                This agent will automatically analyze questions and provide structured pros and cons comparisons with weighted analysis and recommendations.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded border-l-2 border-green-500">
+                                <p className="text-sm text-green-800 dark:text-green-200">
+                                    System agents work automatically in the background and don't require manual selection for each iteration.
                                 </p>
                             </div>
                         </CardContent>

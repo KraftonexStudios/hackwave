@@ -402,7 +402,7 @@ Format your response in Markdown with proper headings, bullet points, and embedd
     agent: AgentConfig,
     query: string,
     context?: string,
-    provider: AIProvider = "gemini"
+    provider: AIProvider = "groq"
   ): Promise<AgentResponse> {
     const startTime = Date.now();
 
@@ -574,7 +574,7 @@ Format your response as a detailed analysis addressing the query from your role 
   async validateResponses(
     responses: AgentResponse[],
     originalQuery: string,
-    provider: AIProvider = "gemini"
+    provider: AIProvider = "groq"
   ): Promise<ValidationResult[]> {
     try {
       if (!Array.isArray(responses) || responses.length === 0) {
@@ -582,20 +582,6 @@ Format your response as a detailed analysis addressing the query from your role 
       }
 
       const model = this.getModel(provider);
-
-      const validationSchema = z.object({
-        validations: z.array(
-          z.object({
-            id: z.string(),
-            claim: z.string(),
-            isValid: z.boolean(),
-            confidence: z.number().min(0).max(100),
-            evidence: z.string(),
-            logicalFallacies: z.array(z.string()),
-            supportingFacts: z.array(z.string()),
-          })
-        ),
-      });
 
       const responsesText = responses
         .map((r, i) => {
@@ -610,7 +596,51 @@ Format your response as a detailed analysis addressing the query from your role 
         })
         .join("\n\n");
 
-      const prompt = `Analyze and validate the following agent responses to the query: "${originalQuery}"
+      // Use different approaches based on provider
+      if (provider === "groq") {
+        // Groq doesn't support JSON schema, use text generation with parsing
+        const prompt = `Analyze and validate the following agent responses to the query: "${originalQuery}"
+
+Responses:
+${responsesText}
+
+For each response, provide validation in this exact format:
+[VALIDATION_START]
+ID: validation-[number]
+Claim: [main claim]
+Valid: [true/false]
+Confidence: [0-100]
+Evidence: [supporting evidence]
+Fallacies: [comma-separated list or "none"]
+Facts: [comma-separated supporting facts]
+[VALIDATION_END]
+
+Focus on logical consistency, evidence quality, and reasoning soundness.`;
+
+        const result = await generateText({
+          model,
+          prompt,
+          temperature: 0.3,
+        });
+
+        return this.parseValidationText(result.text, responses.length);
+      } else {
+        // Use structured generation for Gemini
+        const validationSchema = z.object({
+          validations: z.array(
+            z.object({
+              id: z.string(),
+              claim: z.string(),
+              isValid: z.boolean(),
+              confidence: z.number().min(0).max(100),
+              evidence: z.string(),
+              logicalFallacies: z.array(z.string()),
+              supportingFacts: z.array(z.string()),
+            })
+          ),
+        });
+
+        const prompt = `Analyze and validate the following agent responses to the query: "${originalQuery}"
 
 Responses:
 ${responsesText}
@@ -626,21 +656,22 @@ For each response, provide validation including:
 
 Focus on logical consistency, evidence quality, and reasoning soundness.`;
 
-      const result = await generateObject({
-        model,
-        schema: validationSchema,
-        prompt,
-        temperature: 0.3,
-      });
+        const result = await generateObject({
+          model,
+          schema: validationSchema,
+          prompt,
+          temperature: 0.3,
+        });
 
-      if (!result.object || !Array.isArray(result.object.validations)) {
-        throw new Error("Invalid validation response format");
+        if (!result.object || !Array.isArray(result.object.validations)) {
+          throw new Error("Invalid validation response format");
+        }
+
+        return result.object.validations.map((validation) => ({
+          ...validation,
+          selected: false, // Default to not selected
+        }));
       }
-
-      return result.object.validations.map((validation) => ({
-        ...validation,
-        selected: false, // Default to not selected
-      }));
     } catch (error) {
       console.error("Error validating responses:", error);
       // Return basic validation results as fallback
@@ -651,11 +682,8 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
             ? response.response.substring(0, 100) + "..."
             : "Invalid response format",
         isValid: true,
-        confidence:
-          response && typeof response.confidence === "number"
-            ? response.confidence
-            : 50,
-        evidence: "Automated validation unavailable",
+        confidence: 50,
+        evidence: "Fallback validation due to error",
         logicalFallacies: [],
         supportingFacts: [],
         selected: false,
@@ -663,11 +691,136 @@ Focus on logical consistency, evidence quality, and reasoning soundness.`;
     }
   }
 
+  private parseValidationText(
+    text: string,
+    expectedCount: number
+  ): ValidationResult[] {
+    const validations: ValidationResult[] = [];
+    const blocks = text.split("[VALIDATION_START]").slice(1);
+
+    blocks.forEach((block, index) => {
+      const endIndex = block.indexOf("[VALIDATION_END]");
+      if (endIndex === -1) return;
+
+      const content = block.substring(0, endIndex);
+      const lines = content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line);
+
+      const validation: Partial<ValidationResult> = {
+        id: `validation-${index}`,
+        selected: false,
+      };
+
+      lines.forEach((line) => {
+        if (line.startsWith("ID:")) {
+          validation.id = line.substring(3).trim();
+        } else if (line.startsWith("Claim:")) {
+          validation.claim = line.substring(6).trim();
+        } else if (line.startsWith("Valid:")) {
+          validation.isValid =
+            line.substring(6).trim().toLowerCase() === "true";
+        } else if (line.startsWith("Confidence:")) {
+          const conf = parseInt(line.substring(11).trim(), 10);
+          validation.confidence = isNaN(conf)
+            ? 50
+            : Math.min(Math.max(conf, 0), 100);
+        } else if (line.startsWith("Evidence:")) {
+          validation.evidence = line.substring(9).trim();
+        } else if (line.startsWith("Fallacies:")) {
+          const fallacies = line.substring(10).trim();
+          validation.logicalFallacies =
+            fallacies === "none"
+              ? []
+              : fallacies.split(",").map((f) => f.trim());
+        } else if (line.startsWith("Facts:")) {
+          const facts = line.substring(6).trim();
+          validation.supportingFacts = facts
+            .split(",")
+            .map((f) => f.trim())
+            .filter((f) => f);
+        }
+      });
+
+      // Ensure all required fields are present
+      if (
+        validation.claim &&
+        validation.isValid !== undefined &&
+        validation.confidence !== undefined
+      ) {
+        validations.push({
+          id: validation.id || `validation-${index}`,
+          claim: validation.claim,
+          isValid: validation.isValid,
+          confidence: validation.confidence,
+          evidence: validation.evidence || "No evidence provided",
+          logicalFallacies: validation.logicalFallacies || [],
+          supportingFacts: validation.supportingFacts || [],
+          selected: false,
+        });
+      }
+    });
+
+    // Fill in missing validations if needed
+    while (validations.length < expectedCount) {
+      validations.push({
+        id: `validation-${validations.length}`,
+        claim: "Unable to parse validation",
+        isValid: true,
+        confidence: 50,
+        evidence: "Parsing error occurred",
+        logicalFallacies: [],
+        supportingFacts: [],
+        selected: false,
+      });
+    }
+
+    return validations;
+  }
+
+  async generateText(
+    options: {
+      messages: Array<{ role: string; content: string }>;
+      temperature?: number;
+      maxTokens?: number;
+    },
+    provider: AIProvider = "groq"
+  ): Promise<{ text: string }> {
+    try {
+      const model = this.getModel(provider);
+
+      // Convert messages to a single prompt
+      const prompt = options.messages.map((msg) => msg.content).join("\n\n");
+
+      const result = await generateText({
+        model,
+        prompt,
+        temperature: options.temperature || 0.7,
+        maxTokens: options.maxTokens || 2000,
+        providerOptions: {
+          groq: {
+            parallelToolCalls: true,
+          },
+        },
+      });
+
+      return { text: result.text };
+    } catch (error) {
+      console.error("Error in generateText:", error);
+      throw new Error(
+        `Failed to generate text: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
   async generateInsights(
     responses: AgentResponse[],
     validationResults: ValidationResult[],
     userFeedback?: string,
-    provider: AIProvider = "gemini"
+    provider: AIProvider = "groq"
   ): Promise<string[]> {
     try {
       if (!Array.isArray(responses) || responses.length === 0) {

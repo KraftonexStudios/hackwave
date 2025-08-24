@@ -9,6 +9,7 @@ export interface FlowContext {
   additionalInstructions: string;
   validatorResponses: ValidatorResponse[];
   selectedAgents: string[];
+  enabledSystemAgents: string[];
   iterationCount: number;
   timestamp: Date;
   keptPoints: ValidatorPoint[];
@@ -125,6 +126,7 @@ export class ContextManager {
         overallFeedback: `Automated validation completed for ${validationData.length} claims.`
       }],
       selectedAgents,
+      enabledSystemAgents: [],
       iterationCount: this.currentContext ? this.currentContext.iterationCount + 1 : 1,
       timestamp: new Date(),
       keptPoints,
@@ -189,6 +191,7 @@ export class ContextManager {
       additionalInstructions: formData.additionalInstructions,
       validatorResponses: formData.validatorResponses,
       selectedAgents: formData.selectedAgents,
+      enabledSystemAgents: formData.enabledSystemAgents || [],
       iterationCount: this.currentContext ? this.currentContext.iterationCount + 1 : 1,
       timestamp: new Date(),
       keptPoints,

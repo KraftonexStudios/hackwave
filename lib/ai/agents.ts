@@ -448,6 +448,218 @@ Generate a comprehensive ${reportType} report in markdown format.`;
   }
 }
 
+// Search Engine Agent for web scraping
+export class SearchEngineAgent {
+  private config: AIConfig;
+
+  constructor(provider: AIProvider = "openai") {
+    this.config = defaultConfigs[provider];
+  }
+
+  async searchAndFormat(query: string, context?: string) {
+    const startTime = Date.now();
+    console.log(
+      "🤖 SearchEngineAgent: Starting search and format for query:",
+      query
+    );
+    console.log("📝 Context provided:", context ? "Yes" : "No");
+
+    try {
+      // This will be implemented with Puppeteer API call
+      console.log("🔍 SearchEngineAgent: Performing web search...");
+      const searchResults = await this.performWebSearch(query);
+      console.log(
+        "📊 SearchEngineAgent: Raw search results received:",
+        searchResults.length,
+        "items"
+      );
+
+      // Format results using AI
+      console.log("🎨 SearchEngineAgent: Formatting results with AI...");
+      const formattedResults = await this.formatSearchResults(
+        searchResults,
+        query
+      );
+      console.log(
+        "✨ SearchEngineAgent: AI formatting complete:",
+        formattedResults.length,
+        "formatted items"
+      );
+
+      const processingTime = Date.now() - startTime;
+      console.log(
+        "⏱️ SearchEngineAgent: Total processing time:",
+        processingTime,
+        "ms"
+      );
+
+      return {
+        success: true,
+        data: {
+          query,
+          results: formattedResults,
+          timestamp: new Date().toISOString(),
+          totalResults: searchResults.length,
+          processingTime,
+        },
+      };
+    } catch (error) {
+      console.error(
+        "❌ SearchEngineAgent: Error during search and format:",
+        error
+      );
+      console.error("🔍 SearchEngineAgent: Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        query,
+        timestamp: new Date().toISOString(),
+      });
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Search failed",
+        data: null,
+      };
+    }
+  }
+
+  private async performWebSearch(query: string) {
+    console.log(
+      "🌐 SearchEngineAgent: Calling Playwright API for query:",
+      query
+    );
+
+    // This will call the Playwright API endpoint
+    const response = await fetch("/api/search/playwright", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    console.log(
+      "📡 SearchEngineAgent: Puppeteer API response status:",
+      response.status
+    );
+
+    if (!response.ok) {
+      console.error(
+        "❌ SearchEngineAgent: Puppeteer API failed with status:",
+        response.status
+      );
+      throw new Error("Web search failed");
+    }
+
+    const data = await response.json();
+    console.log("📦 SearchEngineAgent: Puppeteer API data received:", {
+      success: data.success,
+      resultsCount: data.results?.length || 0,
+      totalResults: data.totalResults,
+      processingTime: data.processingTime,
+    });
+
+    return data.results || [];
+  }
+
+  private async formatSearchResults(results: any[], query: string) {
+    console.log(
+      "🎨 SearchEngineAgent: Starting AI formatting for",
+      results.length,
+      "results"
+    );
+    console.log(
+      "📋 SearchEngineAgent: Raw results preview:",
+      results.map((r, i) => ({
+        index: i + 1,
+        title: r.title?.substring(0, 30) + "...",
+        source: r.source,
+        hasSnippet: !!r.snippet,
+      }))
+    );
+
+    const model = getModel(this.config);
+
+    const systemPrompt = `You are a search result formatter. Your task is to take raw web search results and format them into clean, structured data suitable for UI display.
+
+Format each result with:
+- Clean, readable title
+- Concise snippet (max 150 characters)
+- Source domain name
+- Relevance score (0-1) based on query match
+
+Prioritize the most relevant results and ensure snippets are informative.`;
+
+    try {
+      console.log("🤖 SearchEngineAgent: Calling AI model for formatting...");
+      const result = await generateObject({
+        model,
+        schema: z.object({
+          formattedResults: z.array(
+            z.object({
+              title: z.string(),
+              url: z.string(),
+              snippet: z.string().max(150),
+              source: z.string(),
+              relevanceScore: z.number().min(0).max(1),
+            })
+          ),
+        }),
+        system: systemPrompt,
+        prompt: `Format these search results for query "${query}":\n\n${JSON.stringify(
+          results.slice(0, 10),
+          null,
+          2
+        )}`,
+        temperature: 0.3,
+      });
+
+      const formattedResults = result.object.formattedResults.slice(0, 5); // Top 5 results
+      console.log(
+        "✅ SearchEngineAgent: AI formatting successful, returning",
+        formattedResults.length,
+        "results"
+      );
+      console.log(
+        "📊 SearchEngineAgent: Formatted results summary:",
+        formattedResults.map((r, i) => ({
+          index: i + 1,
+          title: r.title.substring(0, 30) + "...",
+          source: r.source,
+          relevanceScore: r.relevanceScore,
+          snippetLength: r.snippet.length,
+        }))
+      );
+
+      return formattedResults;
+    } catch (error) {
+      console.warn(
+        "⚠️ SearchEngineAgent: AI formatting failed, using fallback formatting"
+      );
+      console.error("🔍 SearchEngineAgent: AI formatting error:", error);
+
+      // Fallback formatting
+      const fallbackResults = results
+        .slice(0, 5)
+        .map((result: any, index: number) => ({
+          title: result.title || `Search Result ${index + 1}`,
+          url: result.url || "#",
+          snippet:
+            result.snippet || result.description || "No description available",
+          source:
+            result.source ||
+            new URL(result.url || "https://example.com").hostname,
+          relevanceScore: 0.8 - index * 0.1,
+        }));
+
+      console.log(
+        "🔄 SearchEngineAgent: Fallback formatting complete, returning",
+        fallbackResults.length,
+        "results"
+      );
+      return fallbackResults;
+    }
+  }
+}
+
 // Factory function to create agent instances
 export function createAgentSystem(provider: AIProvider = "openai") {
   return {
@@ -455,6 +667,7 @@ export function createAgentSystem(provider: AIProvider = "openai") {
     responseGenerator: new AgentResponseGenerator(provider),
     validator: new ValidatorAgent("anthropic"), // Use Anthropic for validation
     reportGenerator: new ReportGeneratorAgent("anthropic"), // Use Anthropic for reports
+    searchEngine: new SearchEngineAgent(provider), // New search engine agent
   };
 }
 

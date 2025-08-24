@@ -8,18 +8,95 @@ import type {
   Report,
   SessionAgents,
   Responce as AgentResponse,
-  ValidationReasult as ValidationResult,
+  ValidationResult as ValidationResult,
 } from "@/database.types";
 
 export interface FlowNode {
   id: string;
-  type: "agent" | "distributor" | "validator" | "user";
+  type:
+    | "agent"
+    | "distributor"
+    | "validator"
+    | "user"
+    | "chart-agent"
+    | "proscons-agent"
+    | "global-visualizer";
   position: { x: number; y: number };
   data: {
     label: string;
     status: "idle" | "processing" | "completed" | "error";
     agentId?: string;
     responseId?: string;
+    // Chart agent specific data
+    chartData?: {
+      query?: string;
+      chartType?:
+        | "bar"
+        | "line"
+        | "pie"
+        | "mermaid"
+        | "d3-network"
+        | "plotly"
+        | "flowchart"
+        | "mindmap";
+      data?: Array<{ name: string; value: number; [key: string]: any }>;
+      mermaidCode?: string;
+      plotlyConfig?: any;
+      networkData?: {
+        nodes: Array<{ id: string; name: string; group: number }>;
+        links: Array<{ source: string; target: string; value: number }>;
+      };
+      title?: string;
+      description?: string;
+      timestamp?: string;
+      processingTime?: number;
+    };
+    // Pros/Cons agent specific data
+    prosConsData?: {
+      query?: string;
+      question?: string;
+      pros?: Array<{ point: string; weight?: number; category?: string }>;
+      cons?: Array<{ point: string; weight?: number; category?: string }>;
+      summary?: string;
+      recommendation?: string;
+      timestamp?: string;
+      processingTime?: number;
+      totalPros?: number;
+      totalCons?: number;
+    };
+    // Global visualizer specific data
+    visualizerData?: {
+      query?: string;
+      visualizationType?:
+        | "auto"
+        | "chart"
+        | "diagram"
+        | "network"
+        | "flow"
+        | "mindmap";
+      chartType?:
+        | "bar"
+        | "line"
+        | "pie"
+        | "mermaid"
+        | "d3-network"
+        | "plotly"
+        | "flowchart"
+        | "mindmap";
+      data?: any[];
+      mermaidCode?: string;
+      plotlyConfig?: any;
+      networkData?: {
+        nodes: Array<{ id: string; name: string; group: number }>;
+        links: Array<{ source: string; target: string; value: number }>;
+      };
+      title?: string;
+      description?: string;
+      isLoading?: boolean;
+      error?: string;
+      timestamp?: string;
+      processingTime?: number;
+    };
   };
 }
 
@@ -113,6 +190,22 @@ export interface FlowActions {
   updateFlowNode: (id: string, updates: Partial<FlowNode>) => void;
   addFlowNode: (node: FlowNode) => void;
   addFlowEdge: (edge: FlowEdge) => void;
+
+  // Chart agent specific actions
+  updateChartAgentData: (
+    nodeId: string,
+    chartData: Partial<FlowNode["data"]["chartData"]>
+  ) => void;
+  setChartAgentLoading: (nodeId: string, isLoading: boolean) => void;
+  setChartAgentError: (nodeId: string, error: string) => void;
+
+  // Pros/Cons agent specific actions
+  updateProsConsAgentData: (
+    nodeId: string,
+    prosConsData: Partial<FlowNode["data"]["prosConsData"]>
+  ) => void;
+  setProsConsAgentLoading: (nodeId: string, isLoading: boolean) => void;
+  setProsConsAgentError: (nodeId: string, error: string) => void;
 
   // Real-time updates
   setStreamingResponse: (response: string) => void;
@@ -269,6 +362,117 @@ export const useFlowStore = create<FlowStore>()(
         set((state) => ({ flowNodes: [...state.flowNodes, node] })),
       addFlowEdge: (edge) =>
         set((state) => ({ flowEdges: [...state.flowEdges, edge] })),
+
+      // Chart agent specific actions
+      updateChartAgentData: (nodeId, chartData) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    chartData: { ...node.data.chartData, ...chartData },
+                    status: "completed",
+                  },
+                }
+              : node
+          ),
+        })),
+      setChartAgentLoading: (nodeId, isLoading) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    status: isLoading ? "processing" : "idle",
+                    chartData: {
+                      ...node.data.chartData,
+                      isLoading,
+                    },
+                  },
+                }
+              : node
+          ),
+        })),
+      setChartAgentError: (nodeId, error) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    status: "error",
+                    chartData: {
+                      ...node.data.chartData,
+                      error,
+                      isLoading: false,
+                    },
+                  },
+                }
+              : node
+          ),
+        })),
+
+      // Pros/Cons agent specific actions
+      updateProsConsAgentData: (nodeId, prosConsData) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    prosConsData: {
+                      ...node.data.prosConsData,
+                      ...prosConsData,
+                    },
+                    status: "completed",
+                  },
+                }
+              : node
+          ),
+        })),
+      setProsConsAgentLoading: (nodeId, isLoading) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    status: isLoading ? "processing" : "idle",
+                    prosConsData: {
+                      ...node.data.prosConsData,
+                      isLoading,
+                    },
+                  },
+                }
+              : node
+          ),
+        })),
+      setProsConsAgentError: (nodeId, error) =>
+        set((state) => ({
+          flowNodes: state.flowNodes.map((node) =>
+            node.id === nodeId
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    status: "error",
+                    prosConsData: {
+                      ...node.data.prosConsData,
+                      error,
+                      isLoading: false,
+                    },
+                  },
+                }
+              : node
+          ),
+        })),
 
       // Real-time updates
       setStreamingResponse: (response) => set({ streamingResponse: response }),
