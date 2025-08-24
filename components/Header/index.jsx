@@ -22,7 +22,7 @@ export default function Index() {
     if (button.current) {
       gsap.to(button.current, {
         x: isActive ? -550 : 0, // move left when active, reset when inactive
-        duration: 0.5,
+        duration: 2,
         ease: "elastic.out(1, 0.3)",
       });
     }

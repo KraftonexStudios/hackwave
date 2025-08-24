@@ -1,9 +1,6 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import SubscriptionCheckout from "@/components/subscription/subscription-checkout";
 import Payment from "@/hooks/payment";
 // import { SubscriptionPlans } from "@/database.types";
@@ -13,7 +10,7 @@ const Checkout: React.FC = () => {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
-  const handleSelectPlan = (plan) => {
+  const handleSelectPlan = (plan: any) => {
     setSelectedPlan(plan);
   };
 

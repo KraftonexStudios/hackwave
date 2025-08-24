@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav"; // ✅ new dock nav
 import { UserNav } from "@/components/dashboard/user-nav";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-
+import Image from "next/image";
+import Logo from "@/public/images/photo-1694903089438-bf28d4697d9a.avif";
+import VoiceNavigation from "@/components/voice/VoiceNavigation";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
 
@@ -23,6 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
             {/* ✅ Removed DashboardNav (top nav) */}
+            <Image height={100} width={100} className="w-20 rounded-md overflow-hidden" alt="image" src={Logo} />
           </div>
           <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
             <div className="w-full flex-1 md:w-auto md:flex-none"></div>
@@ -39,6 +42,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
       {/* ✅ Apple-style Dock at the bottom */}
       <DashboardNav />
+      <VoiceNavigation />
     </div>
   );
 }
