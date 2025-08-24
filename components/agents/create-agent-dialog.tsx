@@ -87,6 +87,7 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+console.log(user,'agent');
 
       if (!user) {
         toast({
@@ -110,6 +111,8 @@ export function CreateAgentDialog({ children }: CreateAgentDialogProps) {
       }
 
       const currentAgentCount = agentsResult.data?.length || 0;
+      console.log(user.id,'user.id at checkSubscriptionLimits');
+      
       const canCreate = await canCreateAgent(user.id);
 
       setAgentCount(currentAgentCount);

@@ -31,52 +31,46 @@ export async function getUserSubscription(
 ): Promise<SubscriptionInfo> {
   try {
     const supabase = await createClient();
+console.log(userId,'userId at getUserSubscription');
 
-    let targetUserId = userId;
+//     let targetUserId = userId;
 
-    // If no userId provided, get current user
-    if (!targetUserId) {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) {
-        return {
-          isActive: false,
-          isPremium: false,
-          plan: "FREE",
-          status: null,
-          expiresAt: null,
-          agentLimit: 4, // Free plan limit
-        };
-      }
-      targetUserId = user.id;
-    }
+//     // If no userId provided, get current user
+//     if (!targetUserId) {
+//       console.log('target id not found');
+      
+//       const {
+//         data: { user },
+//         error: userError,
+//       } = await supabase.auth.getUser();
+//       console.log(user);
+      
+//       if (userError || !user) {
+//         return {
+//           isActive: false,
+//           isPremium: false,
+//           plan: "FREE",
+//           status: null,
+//           expiresAt: null,
+//           agentLimit: 4, // Free plan limit
+//         };
+//       }
+//       targetUserId = user.id;
+//     }
 
-    // Convert Supabase auth ID to database user ID if needed
-    let dbUserId = targetUserId;
+//     // Convert Supabase auth ID to database user ID if needed
+//     let dbUserId = targetUserId;
 
-    // Check if targetUserId is a Supabase auth ID (UUID format) and convert to database user ID
-    const { data: dbUser, error: dbUserError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("supabase_id", targetUserId)
-      .single();
-
-    if (dbUser && !dbUserError) {
-      dbUserId = dbUser.id;
-    } else {
-      // If not found by supabase_id, assume targetUserId is already a database user ID
-      // This handles cases where the function is called with database user ID directly
-    }
+// console.log(dbUserId,'at api');
 
     // Get user's subscription using database user ID
     const { data: subscription, error: subError } = await supabase
       .from("user_subscriptions")
       .select("*")
-      .eq("user_id", dbUserId)
-      .eq("status", "ACTIVE")
+      .eq("user_id", userId)
+      // .eq("status", "ACTIVE")
       .single();
+console.log(subscription,'subscription',subError,userId);
 
     if (subError || !subscription) {
       // No active subscription found - user is on free plan
@@ -137,6 +131,8 @@ export async function canCreateAgent(userId?: string): Promise<{
   limit: number;
   isPremium: boolean;
 }> {
+  console.log(userId,'userId at canCreateAgent');
+  
   try {
     const supabase = await createClient();
 
@@ -148,6 +144,7 @@ export async function canCreateAgent(userId?: string): Promise<{
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
+
       if (userError || !user) {
         return {
           canCreate: false,
@@ -170,24 +167,11 @@ export async function canCreateAgent(userId?: string): Promise<{
       };
     }
 
-    // Convert Supabase auth ID to database user ID for agent counting
-    let dbUserId = targetUserId;
-
-    const { data: dbUser, error: dbUserError } = await supabase
-      .from("users")
-      .select("id")
-      .eq("supabase_id", targetUserId)
-      .single();
-
-    if (dbUser && !dbUserError) {
-      dbUserId = dbUser.id;
-    }
-
     // Count user's current agents using database user ID
     const { count, error: countError } = await supabase
       .from("agents")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", dbUserId)
+      .eq("user_id", targetUserId)
       .eq("is_active", true);
 
     if (countError) {

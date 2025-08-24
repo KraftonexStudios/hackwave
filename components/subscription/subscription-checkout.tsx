@@ -3,8 +3,23 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Check, Crown, Star, Zap, Shield, CreditCard } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Loader2,
+  Check,
+  Crown,
+  Star,
+  Zap,
+  Shield,
+  CreditCard,
+} from "lucide-react";
 
 // Uncomment these imports - replace with your actual paths
 import { createClient } from "@/lib/supabase/client";
@@ -27,7 +42,10 @@ interface SubscriptionCheckoutProps {
   onCancel: () => void;
 }
 
-export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutProps) {
+export function SubscriptionCheckout({
+  plan,
+  onCancel,
+}: SubscriptionCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [razorpayKeyId, setRazorpayKeyId] = useState("");
 
@@ -132,7 +150,10 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
 
       // Handle Razorpay checkout
       if (data.razorpaySubscription) {
-        console.log("💳 Initializing Razorpay with subscription:", data.razorpaySubscription);
+        console.log(
+          "💳 Initializing Razorpay with subscription:",
+          data.razorpaySubscription
+        );
 
         const options = {
           key: razorpayKeyId,
@@ -162,10 +183,14 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
               toast.success("Subscription Activated Successfully!");
               window.location.href = "/dashboard";
             } else {
-              console.log("❌ Verification failed, cleaning up subscription...");
+              console.log(
+                "❌ Verification failed, cleaning up subscription..."
+              );
               // Clean up failed subscription
               await cleanupFailedSubscription(userId);
-              toast.error(verifyData.error || "Subscription verification failed");
+              toast.error(
+                verifyData.error || "Subscription verification failed"
+              );
             }
 
             setIsProcessing(false);
@@ -176,7 +201,9 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
           },
           modal: {
             ondismiss: async () => {
-              console.log("❌ Payment cancelled by user, cleaning up subscription...");
+              console.log(
+                "❌ Payment cancelled by user, cleaning up subscription..."
+              );
               // Clean up cancelled subscription
               await cleanupFailedSubscription(userId);
               setIsProcessing(false);
@@ -230,7 +257,10 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
       console.log(userId);
 
       const supabase = createClient();
-      const { error } = await supabase.from("user_subscriptions").delete().eq("user_id", userId);
+      const { error } = await supabase
+        .from("user_subscriptions")
+        .delete()
+        .eq("user_id", userId);
       console.log(error);
 
       if (error) throw error;
@@ -251,22 +281,32 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
       {/* Header Section */}
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-2">Complete Your Subscription</h2>
-        <p className="text-muted-foreground">You're just one step away from unlocking premium features</p>
+        <p className="text-muted-foreground">
+          You're just one step away from unlocking premium features
+        </p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Plan Summary Card */}
-        <Card className={`${planColors.border} border-2 bg-gradient-to-br ${planColors.bg} shadow-xl`}>
+        <Card
+          className={`${planColors.border} border-2 bg-gradient-to-br ${planColors.bg} shadow-xl`}
+        >
           <CardHeader className="text-center">
             <div
               className={`flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${planColors.gradient} text-white shadow-lg`}
             >
               {getPlanIcon(plan.name)}
             </div>
-            <CardTitle className={`text-2xl ${planColors.text}`}>{plan.display_name}</CardTitle>
+            <CardTitle className={`text-2xl ${planColors.text}`}>
+              {plan.display_name}
+            </CardTitle>
             <CardDescription className="text-3xl font-bold mt-2">
-              <span className={planColors.text}>₹{plan.price.toLocaleString()}</span>
-              <span className="text-sm font-normal text-muted-foreground">/{plan.interval}</span>
+              <span className={planColors.text}>
+                ₹{plan.price.toLocaleString()}
+              </span>
+              <span className="text-sm font-normal text-muted-foreground">
+                /{plan.interval}
+              </span>
             </CardDescription>
           </CardHeader>
 
@@ -279,7 +319,11 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
                 <div key={i} className="flex items-start space-x-3">
                   <Check
                     className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                      isPremium ? "text-purple-500" : isEnterprise ? "text-orange-500" : "text-blue-500"
+                      isPremium
+                        ? "text-purple-500"
+                        : isEnterprise
+                        ? "text-orange-500"
+                        : "text-blue-500"
                     }`}
                   />
                   <span className="text-sm leading-relaxed">{feature}</span>
@@ -296,13 +340,17 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
               <CreditCard className="h-5 w-5" />
               <span>Payment Details</span>
             </CardTitle>
-            <CardDescription>Secure payment powered by Razorpay</CardDescription>
+            <CardDescription>
+              Secure payment powered by Razorpay
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             {/* Order Summary */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-              <h4 className="font-medium text-sm uppercase tracking-wide">Order Summary</h4>
+              <h4 className="font-medium text-sm uppercase tracking-wide">
+                Order Summary
+              </h4>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm">Plan:</span>
@@ -317,7 +365,9 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total Amount:</span>
-                  <span className="text-xl font-bold">₹{plan.price.toLocaleString()}</span>
+                  <span className="text-xl font-bold">
+                    ₹{plan.price.toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -330,8 +380,9 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
 
             {/* Terms */}
             <div className="text-xs text-muted-foreground">
-              By confirming your subscription, you agree to our Terms of Service and Privacy Policy. Your subscription
-              will automatically renew each {plan.interval} unless cancelled.
+              By confirming your subscription, you agree to our Terms of Service
+              and Privacy Policy. Your subscription will automatically renew
+              each {plan.interval} unless cancelled.
             </div>
           </CardContent>
 
@@ -354,7 +405,12 @@ export function SubscriptionCheckout({ plan, onCancel }: SubscriptionCheckoutPro
               )}
             </Button>
 
-            <Button variant="outline" onClick={onCancel} disabled={isProcessing} className="w-full">
+            <Button
+              variant="outline"
+              onClick={onCancel}
+              disabled={isProcessing}
+              className="w-full"
+            >
               Back to Plans
             </Button>
           </CardFooter>

@@ -77,15 +77,17 @@ export async function createAgent(
   data: CreateAgentData
 ): Promise<ActionResponse<Agent>> {
   try {
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
+    // const userId = await getCurrentUserId();
+    // if (!userId) {
+    //   return {
+    //     success: false,
+    //     error: "User not authenticated",
+    //   };
+    // }
 
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
 
     // Check subscription limits before creating agent
     const subscription = await getUserSubscription(userId);
@@ -107,11 +109,18 @@ export async function createAgent(
       };
     }
 
+    const usersId = await getCurrentUserId();
+    if (!usersId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
     const agentData: TablesInsert<"agents"> = {
       name: data.name.trim(),
       description: data.description?.trim() || null,
       prompt: data.prompt.trim(),
-      user_id: userId,
+      user_id: usersId,
       is_active: true,
     };
 

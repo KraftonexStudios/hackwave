@@ -88,52 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userEmail = authData.user.email;
-
-    // Check if user exists in public.users by email
-    let { data: userRecord, error: fetchUserError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("email", userEmail)
-      .single();
-
-    if (fetchUserError && fetchUserError.code === "PGRST116") {
-      // No user found, create a new one
-      const { data: insertedUser, error: insertUserError } = await supabase
-        .from("users")
-        .insert({
-          email: userEmail,
-          supabase_id: authData.user.id,
-          name: authData.user.user_metadata?.full_name || null,
-        })
-        .select("*")
-        .single();
-
-      if (insertUserError) {
-        console.error("Failed to insert user:", insertUserError);
-        return NextResponse.json(
-          { error: "Failed to create user record" },
-          { status: 500 }
-        );
-      }
-
-      userRecord = insertedUser;
-    }
-
-    if (!userRecord) {
-      return NextResponse.json(
-        { error: "User record not found" },
-        { status: 500 }
-      );
-    }
-
-    // ✅ Use userRecord.id for foreign key
+    // ✅ Use userId for foreign key
 
     // Don't create subscription record yet - wait for payment verification
     // Just store the Razorpay subscription ID for later verification
 
     console.log("💳 Subscription creation - storing for verification:", {
-      userId: userRecord.id,
+      userId: userId,
       razorpaySubscriptionId: subscription.id,
       planType: "PREMIUM",
       interval: interval,
@@ -141,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Subscription prepared for verification:", {
       razorpaySubscriptionId: subscription.id,
-      userId: userRecord.id,
+      userId: userId,
       plan: "FREE (pending payment verification)",
     });
 
@@ -154,7 +115,7 @@ export async function POST(request: NextRequest) {
         amount: amount * 100, // in paise
         currency: "INR",
         status: subscription.status,
-        userId: userRecord.id, // Send userId for verification
+        userId: userId, // Send userId for verification
       },
       key: process.env.RAZORPAY_KEY_ID,
     });

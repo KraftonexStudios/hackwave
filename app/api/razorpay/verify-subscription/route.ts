@@ -65,16 +65,46 @@ export async function POST(request: NextRequest) {
     // Create or update subscription record after successful payment verification
     const supabase = await createClient();
 
-    // The subscription_id is actually the user_id in our case
-    const userId = subscription_id;
+    // The subscription_id is actually the Supabase auth ID in our case
+    const supabaseUserId = subscription_id;
 
-    console.log("🔍 Verifying subscription for user:", userId);
+    console.log("🔍 Verifying subscription for Supabase user:", supabaseUserId);
+
+    // Ensure the user exists in our users table (for consistency)
+    const { data: existingUser, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("supabase_id", supabaseUserId)
+      .single();
+
+    if (userError && userError.code === "PGRST116") {
+      // User doesn't exist in our users table, create them
+      const { data: newUser, error: createUserError } = await supabase
+        .from("users")
+        .insert({
+          supabase_id: supabaseUserId,
+          email: "", // We'll get this from auth if needed
+        })
+        .select("id")
+        .single();
+
+      if (createUserError) {
+        console.error("Failed to create user:", createUserError);
+        return NextResponse.json({ error: "Failed to create user record" }, { status: 500 });
+      }
+    } else if (userError) {
+      console.error("Error fetching user:", userError);
+      return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
+    }
+
+    // Now we can directly use the Supabase auth ID since user_subscriptions.user_id references users.supabase_id
+    console.log("🔍 Using Supabase auth ID directly:", supabaseUserId);
 
     // Check if user already has a subscription
     const { data: existingSubscription, error: fetchError } = await supabase
       .from("user_subscriptions")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", supabaseUserId)
       .single();
 
     let subscriptionData;
@@ -91,7 +121,7 @@ export async function POST(request: NextRequest) {
           ).toISOString(), // 1 year from now
           razorpay_payment_id: razorpay_payment_id,
         })
-        .eq("user_id", userId)
+        .eq("user_id", supabaseUserId)
         .select("*")
         .single();
 
@@ -108,9 +138,9 @@ export async function POST(request: NextRequest) {
       const { data: newSubscription, error: createError } = await supabase
         .from("user_subscriptions")
         .insert({
-          user_id: userId,
+          user_id: supabaseUserId,
           plan: "PREMIUM", // Create as PREMIUM after successful payment
-          status: subscription.status === "active" ? "ACTIVE" : "EXPIRED",
+          status: "ACTIVE",
           expires_at: new Date(
             Date.now() + 365 * 24 * 60 * 60 * 1000
           ).toISOString(), // 1 year from now
@@ -130,7 +160,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("✅ Subscription verified and created/updated:", {
-      userId: userId,
+      supabaseUserId: supabaseUserId,
       subscriptionId: subscriptionData.id,
       plan: subscriptionData.plan,
       status: subscriptionData.status,
@@ -144,25 +174,6 @@ export async function POST(request: NextRequest) {
         plan: "PREMIUM",
         status: subscription.status === "active" ? "ACTIVE" : "EXPIRED",
       });
-
-      const { error: userUpdateError } = await supabase
-        .from("users")
-        .update({
-          subscription_plan: "PREMIUM", // Always set to PREMIUM after successful payment
-          subscription_status:
-            subscription.status === "active" ? "ACTIVE" : "EXPIRED",
-          subscription_id: subscriptionData.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", subscriptionData.user_id);
-
-      if (userUpdateError) {
-        console.error("User update error:", userUpdateError);
-        return NextResponse.json(
-          { error: "Failed to update user subscription status" },
-          { status: 500 }
-        );
-      }
 
       console.log("User subscription status updated successfully");
     }
