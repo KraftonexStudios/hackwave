@@ -76,24 +76,24 @@
   }
 
   .dark {
-    --background: 0 0% 3.9%; /* Pure black background */
+    --background: 0 0% 0%; /* Pure black background */
     --foreground: 210 40% 98%;
-    --card: 0 0% 7%; /* Slightly lighter than background for cards */
+    --card: 0 0% 3%; /* Very dark card background */
     --card-foreground: 210 40% 98%;
-    --popover: 0 0% 7%;
+    --popover: 0 0% 3%;
     --popover-foreground: 210 40% 98%;
     --primary: 262 83% 58%; /* Violet primary */
     --primary-foreground: 210 40% 98%;
-    --secondary: 0 0% 14.9%; /* Dark gray secondary */
+    --secondary: 240 3.7% 15.9%; /* Dark zinc secondary */
     --secondary-foreground: 210 40% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 262 83% 58%; /* Use violet for accents too */
-    --accent-foreground: 210 40% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%; /* Low zinc accent */
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
+    --border: 240 3.7% 15.9%; /* Zinc border */
+    --input: 240 3.7% 15.9%; /* Zinc input */
     --ring: 262 83% 58%; /* Violet ring */
     --chart-1: 262 83% 58%; /* Violet for primary chart color */
     --chart-2: 262 60% 45%; /* Darker violet variant */
@@ -102,7 +102,6 @@
     --chart-5: 199 95% 74%;
   }
 }
-
 @layer base {
   * {
     @apply border-border;

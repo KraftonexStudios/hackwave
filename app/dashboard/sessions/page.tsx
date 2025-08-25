@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, MessageSquare } from "lucide-react";
-import image from "@/public/images/photo-1737505599162-d9932323a889.avif";
+import image from "@/public/images/photo-1485827404703-89b55fcc595e (1).avif";
 
 function SessionsTableSkeleton() {
   return (

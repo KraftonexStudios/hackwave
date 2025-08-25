@@ -329,6 +329,18 @@ const VoiceNavigation: React.FC = () => {
     }, 1500);
   };
 
+  // Helper function to safely reset recognition state
+  const resetRecognitionState = () => {
+    setIsListening(false);
+    setIsOpen(false);
+    setTranscript("");
+    setFeedback("");
+    if (visualizerInterval.current) {
+      clearInterval(visualizerInterval.current);
+      setVisualizerData(Array(10).fill(0.2));
+    }
+  };
+
   const processCommand = async (command: string) => {
     setIsProcessing(true);
     setFeedback("Processing your command...");
@@ -530,21 +542,39 @@ const VoiceNavigation: React.FC = () => {
 
   // Modify button handlers for click instead of hold
   const handleButtonClick = () => {
-    if (!isListening && recognitionRef.current) {
-      setIsOpen(true);
+    // Safety check: ensure recognition is available
+    if (!recognitionRef.current) {
+      console.error("Speech recognition not initialized");
+      toast({
+        title: "Error",
+        description: "Voice navigation is not available",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isListening) {
+      // Check if recognition is actually not running
       try {
         // Reset any previous state
         setTranscript("");
         setFeedback("");
         setIsProcessing(false);
+        setIsOpen(true);
 
         // Start recognition with error handling
         recognitionRef.current.start();
       } catch (error) {
         console.error("Failed to start recognition:", error);
-        handleRecognitionError("service-not-allowed");
+        if (error.name === "InvalidStateError") {
+          // Recognition is already running, reset state
+          setIsListening(true);
+          setIsOpen(true);
+        } else {
+          handleRecognitionError("service-not-allowed");
+        }
       }
-    } else if (isListening && recognitionRef.current) {
+    } else {
       try {
         recognitionRef.current.stop();
       } catch (error) {
@@ -573,7 +603,7 @@ const VoiceNavigation: React.FC = () => {
       }
 
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      recognition.continuous = false; // Changed to false to prevent conflicts
       recognition.interimResults = true;
       recognition.lang = "en-US";
 
@@ -591,14 +621,12 @@ const VoiceNavigation: React.FC = () => {
       };
 
       recognition.onend = () => {
-        // Only reset if we're not intentionally stopping
-        if (isListening) {
-          setIsListening(false);
-          // Stop voice visualizer
-          if (visualizerInterval.current) {
-            clearInterval(visualizerInterval.current);
-            setVisualizerData(Array(10).fill(0.2));
-          }
+        // Always reset the listening state when recognition ends
+        setIsListening(false);
+        // Stop voice visualizer
+        if (visualizerInterval.current) {
+          clearInterval(visualizerInterval.current);
+          setVisualizerData(Array(10).fill(0.2));
         }
       };
 

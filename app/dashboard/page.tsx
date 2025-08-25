@@ -155,7 +155,7 @@ async function DashboardContent() {
       {/* Enhanced Welcome Section */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-900 bg-clip-text text-transparent">
             Dashboard
           </h1>
           <p className="text-muted-foreground flex items-center gap-2">
