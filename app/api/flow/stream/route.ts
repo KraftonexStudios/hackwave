@@ -85,14 +85,17 @@ export async function POST(request: NextRequest) {
         let controllerClosed = false;
         const sendEvent = (event: StreamEvent) => {
           if (controllerClosed) {
-            console.warn('⚠️ Attempted to send event after controller closed:', event.type);
+            console.warn(
+              "⚠️ Attempted to send event after controller closed:",
+              event.type
+            );
             return;
           }
           try {
             const data = `data: ${JSON.stringify(event)}\n\n`;
             controller.enqueue(new TextEncoder().encode(data));
           } catch (error) {
-            console.error('❌ Error sending event:', error);
+            console.error("❌ Error sending event:", error);
             controllerClosed = true;
           }
         };
@@ -208,11 +211,14 @@ export async function POST(request: NextRequest) {
                     searchEngineData = searchResult.data; // Store for validator
 
                     // Update search engine node with results
-                    console.log('🔄 Sending search engine node update with results:', {
-                      resultsCount: searchResult.data.results?.length || 0,
-                      totalResults: searchResult.data.totalResults,
-                      processingTime: searchResult.data.processingTime
-                    });
+                    console.log(
+                      "🔄 Sending search engine node update with results:",
+                      {
+                        resultsCount: searchResult.data.results?.length || 0,
+                        totalResults: searchResult.data.totalResults,
+                        processingTime: searchResult.data.processingTime,
+                      }
+                    );
                     sendEvent({
                       type: "node_updated",
                       data: {
@@ -262,7 +268,10 @@ export async function POST(request: NextRequest) {
                           results: [],
                           timestamp: new Date().toISOString(),
                           isLoading: false,
-                          error: searchError instanceof Error ? searchError.message : "Search engine unavailable",
+                          error:
+                            searchError instanceof Error
+                              ? searchError.message
+                              : "Search engine unavailable",
                         },
                       },
                     },
@@ -460,7 +469,8 @@ export async function POST(request: NextRequest) {
                             summary: "",
                             recommendation: "",
                             isLoading: false,
-                            error: prosConsData.error || "Pros/cons analysis failed",
+                            error:
+                              prosConsData.error || "Pros/cons analysis failed",
                             status: "error",
                           },
                         },
@@ -743,14 +753,35 @@ export async function POST(request: NextRequest) {
 
           // Step 10: Save round data
           if (currentSessionId) {
-            await supabase.from("debate_rounds").insert({
-              session_id: currentSessionId,
-              query,
-              agent_responses: agentResponses,
-              validation_results: validationResults,
-              round_number: 1,
-              created_at: new Date().toISOString(),
-            });
+            // First, create the debate round
+            const { data: roundData } = await supabase
+              .from("debate_rounds")
+              .insert({
+                session_id: currentSessionId,
+                query,
+                agent_responses: agentResponses,
+                validation_results: validationResults,
+                round_number: 1,
+                created_at: new Date().toISOString(),
+              })
+              .select("id")
+              .single();
+
+            // Then, save individual agent responses to agent_responses table
+            if (roundData?.id && agentResponses.length > 0) {
+              const agentResponseInserts = agentResponses.map((response) => ({
+                round_id: roundData.id,
+                agent_id: response.agentId,
+                response: response.response,
+                reasoning: response.reasoning ? JSON.stringify(response.reasoning) : null,
+                confidence: response.confidence,
+                processing_time: response.processingTime,
+                status: 'SUBMITTED' as const,
+                created_at: new Date().toISOString(),
+              }));
+
+              await supabase.from("agent_responses").insert(agentResponseInserts);
+            }
           }
 
           // Step 11: Send completion event
@@ -785,7 +816,7 @@ export async function POST(request: NextRequest) {
           try {
             controller.close();
           } catch (error) {
-            console.warn('⚠️ Controller already closed:', error);
+            console.warn("⚠️ Controller already closed:", error);
           }
         }
       },

@@ -76,27 +76,27 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 0 0% 3.9%; /* Pure black background */
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 0 0% 7%; /* Slightly lighter than background for cards */
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 0 0% 7%;
     --popover-foreground: 210 40% 98%;
-    --primary: 262 83% 58%;
+    --primary: 262 83% 58%; /* Violet primary */
     --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 0 0% 14.9%; /* Dark gray secondary */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 0 0% 14.9%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 222 10% 20%; /* Changed from green to a dark neutral tone */
+    --accent: 262 83% 58%; /* Use violet for accents too */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 262 83% 58%;
-    --chart-1: 262 83% 58%;
-    --chart-2: 222 15% 30%; /* Changed from green to a background-related blue-gray */
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 262 83% 58%; /* Violet ring */
+    --chart-1: 262 83% 58%; /* Violet for primary chart color */
+    --chart-2: 262 60% 45%; /* Darker violet variant */
     --chart-3: 346 87% 43%;
     --chart-4: 35 91% 65%;
     --chart-5: 199 95% 74%;
@@ -124,14 +124,14 @@
 }
 
 .dark {
-  --sidebar: hsl(240 5.9% 10%);
+  --sidebar: hsl(0 0% 3.9%); /* Match background */
   --sidebar-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary: hsl(262 83% 58%); /* Violet primary */
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent: hsl(0 0% 14.9%); /* Match muted */
   --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-  --sidebar-border: hsl(240 3.7% 15.9%);
-  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+  --sidebar-border: hsl(0 0% 14.9%); /* Match border */
+  --sidebar-ring: hsl(262 83% 58%); /* Violet ring */
 }
 
 @theme inline {

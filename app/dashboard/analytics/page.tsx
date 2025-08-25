@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, TrendingUp, Users, MessageSquare } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, MessageSquare, Activity, Clock, Target, Zap } from 'lucide-react';
+import { getAnalyticsData, getRecentActivity } from '@/actions/analytics';
+import { SessionOverTimeChart, SessionStatusChart, AgentPerformanceChart, ResponseDistributionChart } from '@/components/analytics/charts';
 
 function AnalyticsSkeleton() {
   return (
@@ -43,8 +45,35 @@ function AnalyticsSkeleton() {
 }
 
 async function AnalyticsContent() {
-  // TODO: Implement actual analytics data fetching
-  // This is a placeholder for future analytics implementation
+  const [analyticsResult, activityResult] = await Promise.all([
+    getAnalyticsData(),
+    getRecentActivity(),
+  ]);
+
+  const analytics = analyticsResult.success ? analyticsResult.data : null;
+  const recentActivity = activityResult.success ? activityResult.data : [];
+
+  // Chart configurations
+  const chartConfig = {
+    sessions: {
+      label: "Sessions",
+      color: "hsl(var(--chart-1))",
+    },
+    responses: {
+      label: "Responses",
+      color: "hsl(var(--chart-2))",
+    },
+    confidence: {
+      label: "Confidence",
+      color: "hsl(var(--chart-3))",
+    },
+    count: {
+      label: "Count",
+      color: "hsl(var(--chart-4))",
+    },
+  };
+
+
 
   return (
     <div className="space-y-6">
@@ -57,138 +86,175 @@ async function AnalyticsContent() {
         </div>
       </div>
 
-      {/* Placeholder Stats */}
+      {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Debates</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Coming Soon</div>
+            <div className="text-2xl font-bold">{analytics?.totalSessions || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Debate session analytics
+              Debate sessions created
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agent Performance</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Coming Soon</div>
+            <div className="text-2xl font-bold">{analytics?.activeAgents || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Agent effectiveness metrics
+              Agents available for debates
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Quality</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Responses</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Coming Soon</div>
+            <div className="text-2xl font-bold">{analytics?.totalResponses || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Quality assessment scores
+              Agent responses generated
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usage Trends</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg Rounds</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Coming Soon</div>
+            <div className="text-2xl font-bold">{analytics?.averageRoundsPerSession || 0}</div>
             <p className="text-xs text-muted-foreground">
-              Platform usage patterns
+              Average rounds per session
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Placeholder Charts */}
+      {/* Charts Grid */}
       <div className="grid gap-4 md:grid-cols-2">
+        {/* Sessions Over Time */}
         <Card>
           <CardHeader>
-            <CardTitle>Debate Activity Over Time</CardTitle>
+            <CardTitle>Session Activity (Last 30 Days)</CardTitle>
             <CardDescription>
-              Track debate frequency and engagement
+              Track session creation over time
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center h-64 bg-muted/20 rounded-lg">
-              <div className="text-center">
-                <BarChart3 className="mx-auto h-12 w-12 opacity-50 mb-4" />
-                <p className="text-muted-foreground">Chart visualization coming soon</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  This will show debate activity trends over time
-                </p>
-              </div>
-            </div>
+            <SessionOverTimeChart 
+              data={analytics?.sessionsOverTime || []} 
+              chartConfig={chartConfig} 
+            />
           </CardContent>
         </Card>
 
+        {/* Session Status Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Agent Performance Comparison</CardTitle>
+            <CardTitle>Session Status Distribution</CardTitle>
             <CardDescription>
-              Compare effectiveness across different agents
+              Breakdown of session statuses
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center h-64 bg-muted/20 rounded-lg">
-              <div className="text-center">
-                <TrendingUp className="mx-auto h-12 w-12 opacity-50 mb-4" />
-                <p className="text-muted-foreground">Performance metrics coming soon</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  This will show agent performance comparisons
-                </p>
-              </div>
-            </div>
+            <SessionStatusChart 
+              data={analytics?.sessionsByStatus || []} 
+              chartConfig={chartConfig} 
+            />
           </CardContent>
         </Card>
       </div>
 
-      {/* Feature Notice */}
+      {/* Agent Performance and Response Distribution */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Agent Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Agent Performance</CardTitle>
+            <CardDescription>
+              Average confidence scores by agent
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AgentPerformanceChart 
+              data={analytics?.agentPerformance || []} 
+              chartConfig={chartConfig} 
+            />
+          </CardContent>
+        </Card>
+
+        {/* Responses by Agent */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Response Distribution</CardTitle>
+            <CardDescription>
+              Number of responses by agent
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponseDistributionChart 
+              data={analytics?.responsesByAgent || []} 
+              chartConfig={chartConfig} 
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Analytics Dashboard</CardTitle>
+          <CardTitle>Recent Activity</CardTitle>
           <CardDescription>
-            Advanced analytics and reporting features
+            Latest sessions and rounds
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <BarChart3 className="mx-auto h-16 w-16 opacity-50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Analytics Coming Soon</h3>
-            <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-              We're working on comprehensive analytics features including debate performance metrics,
-              agent effectiveness tracking, response quality analysis, and usage insights.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-sm">
-              <div className="text-left">
-                <h4 className="font-medium mb-2">Planned Features:</h4>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>• Debate session analytics</li>
-                  <li>• Agent performance metrics</li>
-                  <li>• Response quality scoring</li>
-                  <li>• Usage pattern analysis</li>
-                </ul>
-              </div>
-              <div className="text-left">
-                <h4 className="font-medium mb-2">Visualizations:</h4>
-                <ul className="space-y-1 text-muted-foreground">
-                  <li>• Interactive charts and graphs</li>
-                  <li>• Real-time performance dashboards</li>
-                  <li>• Comparative analysis tools</li>
-                  <li>• Export and reporting capabilities</li>
-                </ul>
+          {recentActivity && recentActivity.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg border">
+                  <div className="flex-shrink-0">
+                    {activity.type === 'session' ? (
+                      <MessageSquare className="h-5 w-5 text-blue-500" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-green-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{activity.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(activity.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${activity.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                        activity.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' :
+                          activity.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                      }`}>
+                      {activity.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <div className="text-center">
+                <Activity className="mx-auto h-12 w-12 opacity-50 mb-2" />
+                <p>No recent activity</p>
+                <p className="text-sm mt-1">Start a debate session to see activity here</p>
               </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

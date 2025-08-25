@@ -529,21 +529,24 @@ export class SearchEngineAgent {
 
     try {
       // Call the new ScraperDogs endpoint with absolute URL
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
       const response = await fetch(`${baseUrl}/api/search/scraperdogs`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ query }),
       });
 
       if (!response.ok) {
-        throw new Error(`ScraperDogs request failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `ScraperDogs request failed: ${response.status} ${response.statusText}`
+        );
       }
 
       const searchResult = await response.json();
-      
+
       console.log("📦 SearchEngineAgent: Search result received:", {
         success: searchResult.success,
         resultsCount: searchResult.results?.length || 0,
@@ -552,16 +555,19 @@ export class SearchEngineAgent {
       });
 
       if (!searchResult.success && searchResult.error) {
-        console.warn("⚠️ SearchEngineAgent: ScraperDogs returned error, but has fallback results:", searchResult.error);
+        console.warn(
+          "⚠️ SearchEngineAgent: ScraperDogs returned error, but has fallback results:",
+          searchResult.error
+        );
       }
 
       return searchResult.results || [];
     } catch (error) {
-      console.error(
-        "❌ SearchEngineAgent: ScraperDogs search failed:",
-        error
+      console.error("❌ SearchEngineAgent: ScraperDogs search failed:", error);
+      throw new Error(
+        "Web search failed: " +
+          (error instanceof Error ? error.message : "Unknown error")
       );
-      throw new Error("Web search failed: " + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 
@@ -582,8 +588,8 @@ export class SearchEngineAgent {
     );
 
     // Import unified client for AI operations
-    const { unifiedAIClient } = await import('@/lib/ai/unified-client');
-    
+    const { unifiedAIClient } = await import("@/lib/ai/unified-client");
+
     const systemPrompt = `You are a search result formatter. Your task is to take raw web search results and format them into clean, structured data suitable for UI display.
 
 Format each result with:
@@ -596,7 +602,7 @@ Prioritize the most relevant results and ensure snippets are informative.`;
 
     try {
       console.log("🤖 SearchEngineAgent: Calling AI model for formatting...");
-      const aiProvider = this.provider as 'groq' | 'gemini';
+      const aiProvider = this.provider as "groq" | "gemini";
       const result = await unifiedAIClient.generateObject({
         provider: aiProvider,
         schema: z.object({

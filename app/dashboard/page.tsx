@@ -348,11 +348,10 @@ async function DashboardContent() {
                     className="flex items-start space-x-3 group hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors"
                   >
                     <div
-                      className={`p-2 rounded-full ${
-                        activity.type === "session"
+                      className={`p-2 rounded-full ${activity.type === "session"
                           ? "bg-blue-100 text-blue-600 dark:bg-blue-900/50"
                           : "bg-purple-100 text-purple-600 dark:bg-purple-900/50"
-                      }`}
+                        }`}
                     >
                       <activity.icon className="h-4 w-4" />
                     </div>
@@ -410,18 +409,17 @@ async function DashboardContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentSessions.map((session: Session, index) => (
+                {recentSessions.map((session: Session,) => (
                   <div
                     key={session.id}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group"
                   >
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div
-                        className={`p-2 rounded-lg ${
-                          session.status === "ACTIVE"
+                        className={`p-2 rounded-lg ${session.status === "ACTIVE"
                             ? "bg-green-100 text-green-600 dark:bg-green-900/50"
                             : "bg-gray-100 text-gray-600 dark:bg-gray-800"
-                        }`}
+                          }`}
                       >
                         {session.status === "ACTIVE" ? (
                           <PlayCircle className="h-4 w-4" />
@@ -478,8 +476,8 @@ async function DashboardContent() {
           <CardContent>
             {topAgents.length === 0 ? (
               <div className="text-center py-8">
-                <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/50 rounded-full w-16 h-16 mx-auto mb-4">
-                  <Users className="h-8 w-8 text-purple-600 mx-auto mt-2" />
+                <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full w-16 h-16 mx-auto mb-4">
+                  <Users className="h-8 w-8 text-primary mx-auto mt-2" />
                 </div>
                 <p className="text-muted-foreground mb-4">No agents yet</p>
                 <Button asChild size="sm" className="bg-gradient-to-r from-purple-500 to-purple-600">
@@ -496,11 +494,10 @@ async function DashboardContent() {
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className="relative">
                         <div
-                          className={`p-2 rounded-lg ${
-                            agent.is_active
+                          className={`p-2 rounded-lg ${agent.is_active
                               ? "bg-green-100 text-green-600 dark:bg-green-900/50"
                               : "bg-gray-100 text-gray-600 dark:bg-gray-800"
-                          }`}
+                            }`}
                         >
                           <Bot className="h-4 w-4" />
                         </div>
@@ -511,7 +508,7 @@ async function DashboardContent() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-blue-600 transition-colors">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
                           {agent.name}
                         </p>
                         <div className="flex items-center space-x-2 mt-1">

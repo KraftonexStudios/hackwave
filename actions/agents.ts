@@ -508,15 +508,42 @@ export async function getAgentsWithStats(): Promise<
       };
     }
 
-    // For now, return agents with zero stats since the relationships don't exist yet
-    // This can be enhanced later when session-agent relationships are implemented
-    const agentsWithStats =
-      agents?.map((agent: Agent) => ({
-        ...agent,
-        sessionCount: 0,
-        responseCount: 0,
-        lastUsed: null,
-      })) || [];
+    // Calculate actual statistics for each agent
+    const agentsWithStats = await Promise.all(
+      (agents || []).map(async (agent: Agent) => {
+        // Get session count for this agent
+        const { data: sessionAgents } = await supabase
+          .from("session_agents")
+          .select("session_id, debate_sessions!inner(user_id)")
+          .eq("agent_id", agent.id)
+          .eq("debate_sessions.user_id", userId);
+
+        const sessionCount = sessionAgents?.length || 0;
+
+        // Get response count and last used date for this agent
+        const { data: responses } = await supabase
+          .from("agent_responses")
+          .select(`
+            created_at,
+            debate_rounds!inner(
+              debate_sessions!inner(user_id)
+            )
+          `)
+          .eq("agent_id", agent.id)
+          .eq("debate_rounds.debate_sessions.user_id", userId)
+          .order("created_at", { ascending: false });
+
+        const responseCount = responses?.length || 0;
+        const lastUsed = responses && responses.length > 0 ? responses[0].created_at : null;
+
+        return {
+          ...agent,
+          sessionCount,
+          responseCount,
+          lastUsed,
+        };
+      })
+    );
 
     return {
       success: true,

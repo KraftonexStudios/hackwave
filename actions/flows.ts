@@ -327,6 +327,180 @@ export async function updateFlowStatus(
   }
 }
 
+// Save flow data as a debate round
+export async function saveFlowRound(
+  sessionId: string,
+  flowData: {
+    nodes: any[];
+    edges: any[];
+    validationResults?: any[];
+    processingData?: any;
+    layoutDirection?: 'TB' | 'BT' | 'LR' | 'RL';
+    currentRound?: number;
+    debateHistory?: string[];
+    enabledSystemAgents?: string[];
+    selectedAgents?: string[];
+    inputValue?: string;
+  },
+  isRegeneration: boolean = false
+): Promise<ActionResponse> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    const supabase = await createClient();
+
+    // First verify the session belongs to the user
+    const { data: session, error: sessionError } = await supabase
+      .from("debate_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .single();
+
+    if (sessionError || !session) {
+      return {
+        success: false,
+        error: "Flow not found or access denied",
+      };
+    }
+
+    // Get the next round number
+    const { data: existingRounds, error: roundsError } = await supabase
+      .from("debate_rounds")
+      .select("round_number")
+      .eq("session_id", sessionId)
+      .order("round_number", { ascending: false })
+      .limit(1);
+
+    if (roundsError) {
+      console.error("Error fetching existing rounds:", roundsError);
+      return {
+        success: false,
+        error: "Failed to determine round number",
+      };
+    }
+
+    const nextRoundNumber = existingRounds && existingRounds.length > 0 
+      ? existingRounds[0].round_number + 1 
+      : 1;
+
+    // Add selected agents to session if they're not already added
+    if (flowData.selectedAgents && flowData.selectedAgents.length > 0) {
+      // Check which agents are already in the session
+      const { data: existingSessionAgents } = await supabase
+        .from("session_agents")
+        .select("agent_id")
+        .eq("session_id", sessionId)
+        .in("agent_id", flowData.selectedAgents);
+
+      const existingAgentIds = existingSessionAgents?.map(sa => sa.agent_id) || [];
+      const newAgentIds = flowData.selectedAgents.filter(agentId => !existingAgentIds.includes(agentId));
+
+      // Add new agents to the session
+      if (newAgentIds.length > 0) {
+        const sessionAgents = newAgentIds.map(agentId => ({
+          session_id: sessionId,
+          agent_id: agentId,
+          role: "PARTICIPANT" as const,
+          is_active: true,
+        }));
+
+        const { error: sessionAgentsError } = await supabase
+          .from("session_agents")
+          .insert(sessionAgents);
+
+        if (sessionAgentsError) {
+          console.error("Error adding agents to session:", sessionAgentsError);
+          // Don't fail the entire operation, just log the error
+        }
+      }
+    }
+
+    // Save the flow data as a debate round with complete state
+    const { data: round, error: roundError } = await supabase
+      .from("debate_rounds")
+      .insert({
+        session_id: sessionId,
+        round_number: nextRoundNumber,
+        distributor_response: {
+          // Core flow data
+          nodes: flowData.nodes.map(node => ({
+            id: node.id,
+            type: node.type,
+            position: node.position,
+            data: node.data,
+            style: node.style,
+            className: node.className,
+            draggable: node.draggable,
+            selectable: node.selectable,
+            deletable: node.deletable,
+            width: node.width,
+            height: node.height
+          })),
+          edges: flowData.edges.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            type: edge.type,
+            animated: edge.animated,
+            style: edge.style,
+            data: edge.data,
+            label: edge.label,
+            labelStyle: edge.labelStyle,
+            labelShowBg: edge.labelShowBg,
+            labelBgStyle: edge.labelBgStyle
+          })),
+          validationResults: flowData.validationResults || [],
+          processingData: flowData.processingData || null,
+          
+          // UI and layout state
+          layoutDirection: flowData.layoutDirection || 'TB',
+          currentRound: flowData.currentRound || 1,
+          debateHistory: flowData.debateHistory || [],
+          enabledSystemAgents: flowData.enabledSystemAgents || [],
+          selectedAgents: flowData.selectedAgents || [],
+          inputValue: flowData.inputValue || '',
+          
+          // Metadata
+          isRegeneration,
+          timestamp: new Date().toISOString(),
+          nodeCount: flowData.nodes.length,
+          edgeCount: flowData.edges.length,
+          validationCount: (flowData.validationResults || []).length
+        },
+        status: 'COMPLETED'
+      })
+      .select()
+      .single();
+
+    if (roundError) {
+      console.error("Error saving flow round:", roundError);
+      return {
+        success: false,
+        error: "Failed to save flow round",
+      };
+    }
+
+    return {
+      success: true,
+      data: round,
+      message: `Flow round ${nextRoundNumber} saved successfully`,
+    };
+  } catch (error) {
+    console.error("Error in saveFlowRound:", error);
+    return {
+      success: false,
+      error: "An unexpected error occurred",
+    };
+  }
+}
+
 // Delete a flow session
 export async function deleteFlow(sessionId: string): Promise<ActionResponse> {
   try {

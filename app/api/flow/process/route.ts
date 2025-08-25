@@ -118,14 +118,35 @@ export async function POST(request: NextRequest) {
 
     // Step 5: Save round data
     if (currentSessionId) {
-      await supabase.from("debate_rounds").insert({
-        session_id: currentSessionId,
-        query,
-        agent_responses: agentResponses,
-        validation_results: validationResults,
-        round_number: 1, // This should be incremented based on existing rounds
-        created_at: new Date().toISOString(),
-      });
+      // First, create the debate round
+      const { data: roundData } = await supabase
+        .from("debate_rounds")
+        .insert({
+          session_id: currentSessionId,
+          query,
+          agent_responses: agentResponses,
+          validation_results: validationResults,
+          round_number: 1, // This should be incremented based on existing rounds
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      // Then, save individual agent responses to agent_responses table
+      if (roundData?.id) {
+        const agentResponseInserts = agentResponses.map((response) => ({
+          round_id: roundData.id,
+          agent_id: response.agentId,
+          response: response.response,
+          reasoning: response.reasoning ? JSON.stringify(response.reasoning) : null,
+          confidence: response.confidence,
+          processing_time: response.processingTime,
+          status: 'SUBMITTED' as const,
+          created_at: new Date().toISOString(),
+        }));
+
+        await supabase.from("agent_responses").insert(agentResponseInserts);
+      }
     }
 
     return NextResponse.json({

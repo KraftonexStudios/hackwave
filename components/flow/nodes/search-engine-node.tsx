@@ -39,7 +39,7 @@ const getSourceInitials = (source: string) => {
 
 export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
   const displayResults = data.results?.slice(0, 5) || [];
-  
+
   // Debug logging
   console.log('🔍 SearchEngineNode render:', {
     query: data.query,
@@ -101,9 +101,9 @@ export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
               {displayResults.map((result, index) => {
                 const sourceColor = getSourceColor(result.source);
                 const sourceInitials = getSourceInitials(result.source);
-                
+
                 return (
-                  <Card key={index} className="border border-gray-200 hover:border-blue-300 transition-colors">
+                  <Card key={index} className="border hover:border-primary/50 transition-colors">
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
                         <Avatar className="h-6 w-6 flex-shrink-0" style={{ backgroundColor: sourceColor }}>
@@ -113,7 +113,7 @@ export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <h4 className="font-medium text-sm text-blue-600 hover:text-blue-800 cursor-pointer line-clamp-2">
+                            <h4 className="font-medium text-sm text-primary hover:text-primary/80 cursor-pointer line-clamp-2">
                               {result.title}
                             </h4>
                             <ExternalLink className="h-3 w-3 text-gray-400 flex-shrink-0" />
@@ -139,7 +139,7 @@ export function SearchEngineNode({ data }: { data: SearchEngineNodeData }) {
               })}
             </div>
           )}
-          
+
           {/* Timestamp */}
           <div className="flex items-center justify-center text-xs text-muted-foreground pt-2 border-t">
             <Clock className="h-3 w-3 mr-1" />

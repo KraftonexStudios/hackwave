@@ -88,8 +88,8 @@ export function UserInteractionForm({
         setFormData(prev => ({
             ...prev,
             enabledSystemAgents: isEnabled
-                ? [...prev.enabledSystemAgents, agentId]
-                : prev.enabledSystemAgents.filter(id => id !== agentId)
+                ? [...(prev.enabledSystemAgents || []), agentId]
+                : (prev.enabledSystemAgents || []).filter(id => id !== agentId)
         }));
     };
 
@@ -344,14 +344,14 @@ export function UserInteractionForm({
                                             </div>
                                         </div>
                                         <Checkbox
-                                            checked={formData.enabledSystemAgents.includes('search-engine')}
+                                            checked={formData.enabledSystemAgents?.includes('search-engine') || false}
                                             onCheckedChange={(checked) =>
                                                 handleSystemAgentToggle('search-engine', checked as boolean)
                                             }
                                             className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                                         />
                                     </div>
-                                    {formData.enabledSystemAgents.includes('search-engine') && (
+                                    {formData.enabledSystemAgents?.includes('search-engine') && (
                                         <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded border-l-2 border-blue-500">
                                             <p className="text-sm text-blue-800 dark:text-blue-200">
                                                 This agent will automatically search the web for relevant information based on the question distributor's queries and provide formatted results as search engine nodes in the flow.
@@ -373,14 +373,14 @@ export function UserInteractionForm({
                                             </div>
                                         </div>
                                         <Checkbox
-                                            checked={formData.enabledSystemAgents.includes('chart-agent')}
+                                            checked={formData.enabledSystemAgents?.includes('chart-agent') || false}
                                             onCheckedChange={(checked) =>
                                                 handleSystemAgentToggle('chart-agent', checked as boolean)
                                             }
                                             className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
                                         />
                                     </div>
-                                    {formData.enabledSystemAgents.includes('chart-agent') && (
+                                    {formData.enabledSystemAgents?.includes('chart-agent') && (
                                         <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 rounded border-l-2 border-green-500">
                                             <p className="text-sm text-green-800 dark:text-green-200">
                                                 This agent will automatically create visual charts and graphs based on data analysis, supporting bar charts, line charts, and pie charts for better data visualization.
@@ -402,14 +402,14 @@ export function UserInteractionForm({
                                             </div>
                                         </div>
                                         <Checkbox
-                                            checked={formData.enabledSystemAgents.includes('proscons-agent')}
+                                            checked={formData.enabledSystemAgents?.includes('proscons-agent') || false}
                                             onCheckedChange={(checked) =>
                                                 handleSystemAgentToggle('proscons-agent', checked as boolean)
                                             }
                                             className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
                                         />
                                     </div>
-                                    {formData.enabledSystemAgents.includes('proscons-agent') && (
+                                    {formData.enabledSystemAgents?.includes('proscons-agent') && (
                                         <div className="mt-3 p-3 bg-purple-50 dark:bg-purple-950 rounded border-l-2 border-purple-500">
                                             <p className="text-sm text-purple-800 dark:text-purple-200">
                                                 This agent will automatically analyze questions and provide structured pros and cons comparisons with weighted analysis and recommendations.
